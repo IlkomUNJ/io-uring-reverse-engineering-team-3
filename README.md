@@ -14,7 +14,7 @@ Score is mainly calculated from individual contributions made to the commit. The
 - [Task 4](/function_documentation.md)
 
 ## Team Members
-- Dandy Arya Akbar (1313623028)
-- Muhammad Hafizh Rifan (1313623034)
-- Syahrul Dwi Ramadhan (1313623019)
-- Naufal Bisma Ismawan (1313623029)
+- Dandy Arya Akbar (NIM 1313623028)
+- Muhammad Hafizh Rifan (NIM 1313623034)
+- Syahrul Dwi Ramadhan (NIM 1313623019)
+- Naufal Bisma Ismawan (NIM 1313623029)
