@@ -39,6 +39,19 @@ Implements the basic worker thread pool for io_uring (io-wq). Manages the creati
 ### advise.h
 Declares the function prototypes for preparing and executing madvise and fadvise operations in io_uring. This header provides the interface for the corresponding implementation in advise.c, allowing other parts of the kernel to invoke memory and file advice operations through io_uring requests.
 
+**Function specifications:**
+- `int io_madvise_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a madvise operation from an io_uring submission queue entry.
+
+- `int io_madvise(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a madvise operation for the given request.
+
+- `int io_fadvise_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a fadvise operation from an io_uring submission queue entry.
+
+- `int io_fadvise(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a fadvise operation for the given request.
+
 ### alloc_cache.h
 Defines the interface and inline helpers for managing a simple memory allocation cache used by io_uring. This header provides functions to initialize, allocate, free, and manage cached memory objects, optimizing frequent allocations and deallocations by reusing objects from a preallocated pool. It also includes KASAN (Kernel Address Sanitizer) support for memory safety when enabled.
 
@@ -94,6 +107,18 @@ Declares the data structures and function prototypes for request cancellation op
 
 ### epoll.h
 Declares the function prototypes for preparing and executing epoll control and wait operations in io_uring, enabled when CONFIG_EPOLL is set. This header provides the interface for integrating epoll-based event notification with io_uring, allowing submission and completion of epoll_ctl and epoll_wait requests through the io_uring interface.
+
+**Function specifications:**
+- `int io_epoll_ctl_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares an epoll_ctl operation from a submission queue entry.
+- `int io_epoll_ctl(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes an epoll_ctl operation.
+- `int io_epoll_wait_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares an epoll_wait operation from a submission queue entry.
+- `int io_epoll_wait(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes an epoll_wait operation.
+- `void io_epoll_cleanup(struct io_kiocb *req);`
+  Cleans up resources associated with an epoll operation.
 
 ### eventfd.h
 Declares the function prototypes for eventfd integration in io_uring. This header provides interfaces for registering and unregistering eventfd file descriptors with an io_uring context, as well as signaling and flushing eventfd notifications. These functions enable asynchronous notification mechanisms between user space and io_uring operations.
@@ -241,6 +266,35 @@ Declares the function prototypes for futex (fast userspace mutex) operations in 
 ### io_uring.h
 Declares the core data structures, constants, and function prototypes for the io_uring subsystem. Provides interfaces for submission and completion queue management, request allocation and lifecycle, task work handling, file and resource management, and integration with kernel synchronization primitives. Defines helpers and inlines for efficient request processing, completion event posting, and context management, supporting both synchronous and asynchronous I/O operations. This header is central to the coordination of all io_uring operations within the kernel.
 
+**Function specifications:**
+- `struct io_ring_ctx *io_ring_ctx_alloc(unsigned int entries, unsigned int flags);`
+  Allocates and initializes an io_uring context with the specified number of entries and flags.
+- `void io_ring_ctx_free(struct io_ring_ctx *ctx);`
+  Frees all resources associated with an io_uring context.
+- `int io_submit_sqes(struct io_ring_ctx *ctx, unsigned int nr, struct io_kiocb **reqs);`
+  Submits an array of submission queue entries to the io_uring context.
+- `void io_cqring_fill_event(struct io_ring_ctx *ctx, u64 user_data, s32 res, u32 flags);`
+  Posts a completion event to the completion queue with the specified user data, result, and flags.
+- `void io_commit_cqring(struct io_ring_ctx *ctx);`
+  Commits all pending completion queue events to user space.
+- `void io_put_task(struct task_struct *task);`
+  Releases a reference to a task structure used by io_uring.
+- `void io_req_complete(struct io_kiocb *req, long res, unsigned int issue_flags);`
+  Completes an io_uring request with the specified result and flags.
+- `void io_queue_async_work(struct io_kiocb *req);`
+  Queues an asynchronous work item for execution.
+- `void io_run_task_work(struct io_ring_ctx *ctx);`
+  Runs pending task work for the given io_uring context.
+- `void io_uring_task_cancel(struct io_uring_task *tctx, struct io_ring_ctx *ctx, bool cancel_all);`
+  Cancels pending requests for a given task and context.
+- `void io_uring_add_personality(struct io_ring_ctx *ctx, kuid_t kuid);`
+  Adds a personality (user identity) to the io_uring context.
+- `void io_uring_remove_personality(struct io_ring_ctx *ctx, unsigned int id);`
+  Removes a personality from the io_uring context by ID.
+- `void io_uring_show_fdinfo(struct seq_file *m, struct file *f);`
+  Outputs io_uring-related information for the given file descriptor to the provided seq_file.
+
+
 ### io-wq.h
 Declares the core data structures, constants, and function prototypes for the internal io_uring worker thread pool (io-wq) subsystem. Provides interfaces for creating and destroying worker pools, enqueuing work, managing work hashing and concurrency, setting CPU affinity, and controlling the number of worker threads. Defines types and helpers for work cancellation, worker state management, and integration with the io_uring task context. Supports both bounded and unbounded worker pools, efficient work distribution, and cancellation semantics for asynchronous I/O operations.
 
@@ -280,3 +334,396 @@ Declares the core data structures, constants, and function prototypes for the in
 
 - `bool io_wq_current_is_worker(void);`
   Returns true if the current task is an io-wq worker.
+
+### kbuf.h
+Declares data structures and functions for managing kernel and user-provided buffers in io_uring. Handles buffer selection, recycling, and registration, supporting both classic and ring-mapped buffer models. Provides mechanisms for buffer allocation, deallocation, and tracking, enabling efficient zero-copy I/O and buffer lifecycle management for asynchronous operations.
+
+**Function specifications:**
+- `int io_register_buffers(struct io_ring_ctx *ctx, void __user *arg, unsigned int nr_args);`
+  Registers user-provided buffers with the io_uring context.
+- `int io_unregister_buffers(struct io_ring_ctx *ctx);`
+  Unregisters all buffers from the io_uring context.
+- `void io_kbuf_recycle(struct io_ring_ctx *ctx, struct io_buffer *buf);`
+  Recycles a buffer for reuse in the io_uring context.
+- `struct io_buffer *io_kbuf_select(struct io_ring_ctx *ctx, size_t len, unsigned bgid);`
+  Selects a buffer from the registered buffer group for the given length and group ID.
+- `void io_kbuf_free(struct io_ring_ctx *ctx);`
+  Frees all kernel buffers associated with the io_uring context.
+
+### memmap.h
+Defines interfaces for memory mapping and region management in io_uring. Provides functions for pinning user pages, handling unmapped area requests, and managing mapped regions for buffer sharing between user and kernel space. Supports both MMU and NOMMU systems, facilitating efficient memory operations and safe region cleanup.
+
+**Function specifications:**
+- `int io_pin_user_pages(unsigned long start, unsigned long nr_pages, int write, struct page **pages);`
+  Pins user pages in memory for I/O operations.
+- `void io_unpin_user_pages(struct page **pages, unsigned long nr_pages);`
+  Unpins previously pinned user pages.
+- `unsigned long io_get_unmapped_area(struct file *file, unsigned long addr, unsigned long len, unsigned long pgoff, unsigned long flags);`
+  Finds an unmapped area suitable for memory mapping.
+- `int io_mem_region_add(struct io_ring_ctx *ctx, unsigned long addr, unsigned long len);`
+  Adds a memory region to the io_uring context.
+- `void io_mem_region_remove(struct io_ring_ctx *ctx, unsigned long addr, unsigned long len);`
+  Removes a memory region from the io_uring context.
+
+### msg_ring.h
+Declares functions for message ring operations within io_uring. Provides interfaces for preparing, executing, and cleaning up message ring requests, enabling inter-ring communication and synchronization between different io_uring instances or contexts.
+
+**Function specifications:**
+- `int io_msg_ring_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a message ring operation from a submission queue entry.
+- `int io_msg_ring(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a message ring operation.
+- `void io_msg_ring_cleanup(struct io_kiocb *req);`
+  Cleans up resources associated with a message ring request.
+
+### napi.h
+Declares interfaces for NAPI (New API) integration with io_uring, enabling busy-polling and efficient network receive operations. Provides functions for registering/unregistering NAPI IDs, managing busy-poll lists, and integrating with kernel network stack for low-latency I/O, with conditional compilation for systems with or without busy-poll support.
+
+**Function specifications:**
+- `int io_napi_add_id(struct io_ring_ctx *ctx, unsigned int napi_id);`
+  Registers a NAPI ID with the io_uring context.
+- `void io_napi_del_id(struct io_ring_ctx *ctx, unsigned int napi_id);`
+  Unregisters a NAPI ID from the io_uring context.
+- `void io_napi_busy_poll(struct io_ring_ctx *ctx);`
+  Performs busy-polling for registered NAPI IDs.
+- `void io_napi_cleanup(struct io_ring_ctx *ctx);`
+  Cleans up all NAPI-related resources in the io_uring context.
+
+### net.h
+Declares data structures and functions for asynchronous network operations in io_uring. Provides preparation and execution routines for socket, send, receive, shutdown, bind, listen, and accept operations, as well as zero-copy send support. Integrates with kernel networking APIs and manages message headers, vectors, and cleanup for efficient asynchronous networking.
+
+**Function specifications:**
+- `int io_socket_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a socket operation from a submission queue entry.
+- `int io_socket(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a socket operation.
+- `int io_sendmsg_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a sendmsg operation.
+- `int io_sendmsg(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a sendmsg operation.
+- `int io_recvmsg_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a recvmsg operation.
+- `int io_recvmsg(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a recvmsg operation.
+- `int io_shutdown_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a shutdown operation.
+- `int io_shutdown(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a shutdown operation.
+- `int io_bind_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a bind operation.
+- `int io_bind(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a bind operation.
+- `int io_listen_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a listen operation.
+- `int io_listen(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a listen operation.
+- `int io_accept_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares an accept operation.
+- `int io_accept(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes an accept operation.
+- `void io_netmsg_cleanup(struct io_kiocb *req);`
+  Cleans up resources associated with a network message request.
+
+### nop.h
+Declares preparation and execution functions for the no-operation (NOP) request in io_uring. Used for testing, benchmarking, or as a placeholder operation, ensuring minimal overhead and integration with the io_uring submission and completion model.
+
+**Function specifications:**
+- `int io_nop_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a NOP operation from a submission queue entry.
+- `int io_nop(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a NOP operation.
+
+### notif.h
+Declares data structures and functions for notification handling in io_uring, particularly for zero-copy and asynchronous completion notifications. Manages notification objects, memory accounting, and completion signaling, enabling efficient user-space notification of I/O completion events.
+
+**Function specifications:**
+- `int io_notif_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a notification request.
+- `int io_notif(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a notification request.
+- `void io_notif_complete(struct io_kiocb *req, long res);`
+  Completes a notification request with the specified result.
+- `void io_notif_account_mem(struct io_ring_ctx *ctx, ssize_t size);`
+  Accounts for memory usage by notification objects.
+
+### openclose.h
+Declares preparation, execution, and cleanup functions for open, openat2, and close operations in io_uring. Provides interfaces for managing file descriptors, including support for fixed file tables and installation of fixed file descriptors, enabling efficient asynchronous file open/close operations.
+
+**Function specifications:**
+- `int io_openat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares an openat operation.
+- `int io_openat(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes an openat operation.
+- `void io_openat_cleanup(struct io_kiocb *req);`
+  Cleans up resources associated with an openat operation.
+- `int io_openat2_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares an openat2 operation.
+- `int io_openat2(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes an openat2 operation.
+- `void io_openat2_cleanup(struct io_kiocb *req);`
+  Cleans up resources associated with an openat2 operation.
+- `int io_close_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a close operation.
+- `int io_close(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a close operation.
+
+### poll.h
+Declares data structures and functions for poll-based event notification in io_uring. Provides preparation and execution routines for poll add and remove operations, as well as cancellation and multishot support. Integrates with kernel poll mechanisms to enable efficient asynchronous event monitoring.
+
+**Function specifications:**
+- `int io_poll_add_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a poll add operation.
+- `int io_poll_add(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a poll add operation.
+- `int io_poll_remove_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a poll remove operation.
+- `int io_poll_remove(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a poll remove operation.
+- `void io_poll_multishot(struct io_kiocb *req);`
+  Handles multishot poll events.
+- `int io_poll_cancel(struct io_ring_ctx *ctx, struct io_cancel_data *cd, unsigned int issue_flags);`
+  Cancels a poll operation matching the given cancel data.
+
+### refs.h
+Declares inline helpers and macros for managing reference counting of io_uring request objects. Provides atomic operations for incrementing, decrementing, and testing reference counts, ensuring safe lifecycle management and preventing premature deallocation of in-flight requests.
+
+**Function specifications:**
+- `void io_req_ref_get(struct io_kiocb *req);`
+  Increments the reference count of a request.
+- `bool io_req_ref_put(struct io_kiocb *req);`
+  Decrements the reference count and returns true if it reached zero.
+- `bool io_req_ref_test(struct io_kiocb *req);`
+  Tests if the reference count is non-zero.
+
+### register.h
+Declares functions for unregistering eventfd and personality objects in io_uring, as well as retrieving registered file descriptors. Provides interfaces for resource cleanup and management of registered resources within the io_uring context.
+
+**Function specifications:**
+- `int io_unregister_eventfd(struct io_ring_ctx *ctx);`
+  Unregisters the eventfd from the io_uring context.
+- `int io_unregister_personality(struct io_ring_ctx *ctx, unsigned int id);`
+  Unregisters a personality object by ID.
+- `int io_get_registered_fd(struct io_ring_ctx *ctx, unsigned int index, struct file **file);`
+  Retrieves a registered file descriptor by index.
+
+### rsrc.h
+Declares data structures and functions for managing io_uring resources, including files and buffers. Provides interfaces for resource node allocation, lookup, reference counting, and registration/unregistration of files and buffers. Supports efficient resource tracking, memory accounting, and integration with user-space registration APIs.
+
+**Function specifications:**
+- `struct io_rsrc_node *io_rsrc_node_alloc(unsigned int nr, gfp_t gfp);`
+  Allocates a resource node for managing files or buffers.
+- `void io_rsrc_node_free(struct io_rsrc_node *node);`
+  Frees a resource node.
+- `int io_register_files(struct io_ring_ctx *ctx, void __user *arg, unsigned int nr_args);`
+  Registers files with the io_uring context.
+- `int io_unregister_files(struct io_ring_ctx *ctx);`
+  Unregisters all files from the io_uring context.
+- `int io_register_buffers(struct io_ring_ctx *ctx, void __user *arg, unsigned int nr_args);`
+  Registers buffers with the io_uring context.
+- `int io_unregister_buffers(struct io_ring_ctx *ctx);`
+  Unregisters all buffers from the io_uring context.
+
+### rw.h
+Declares data structures and functions for asynchronous read and write operations in io_uring. Provides preparation and execution routines for various read/write variants (including fixed and vectored I/O), as well as cleanup and failure handling. Manages I/O vectors, state, and completion for high-performance asynchronous file operations.
+
+**Function specifications:**
+- `int io_read_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a read operation.
+- `int io_read(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a read operation.
+- `int io_write_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a write operation.
+- `int io_write(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a write operation.
+- `void io_rw_cleanup(struct io_kiocb *req);`
+  Cleans up resources associated with a read/write operation.
+- `void io_rw_fail(struct io_kiocb *req, int ret);`
+  Handles failure for a read/write operation.
+
+### slist.h
+Declares inline functions and macros for managing singly-linked work lists used in io_uring's internal work queue implementation. Provides efficient list manipulation primitives for adding, removing, splicing, and iterating over work nodes, supporting scalable and lockless work queue management.
+
+**Function specifications:**
+- `void io_slist_add(struct io_slist_head *head, struct io_slist_node *node);`
+  Adds a node to the singly-linked list.
+- `struct io_slist_node *io_slist_del_head(struct io_slist_head *head);`
+  Removes and returns the head node from the list.
+- `void io_slist_splice(struct io_slist_head *from, struct io_slist_head *to);`
+  Splices all nodes from one list to another.
+- `bool io_slist_empty(const struct io_slist_head *head);`
+  Checks if the list is empty.
+
+### sqpoll.h
+Declares data structures and functions for submission queue polling (SQPOLL) in io_uring. Manages the SQPOLL thread, context lists, synchronization, and CPU affinity. Provides interfaces for thread creation, parking, un-parking, and cleanup, enabling efficient offloaded submission queue processing.
+
+**Function specifications:**
+- `int io_sqpoll_start(struct io_ring_ctx *ctx);`
+  Starts the SQPOLL thread for the io_uring context.
+- `void io_sqpoll_stop(struct io_ring_ctx *ctx);`
+  Stops the SQPOLL thread.
+- `void io_sqpoll_park(struct io_ring_ctx *ctx);`
+  Parks the SQPOLL thread.
+- `void io_sqpoll_unpark(struct io_ring_ctx *ctx);`
+  Unparks the SQPOLL thread.
+- `void io_sqpoll_cleanup(struct io_ring_ctx *ctx);`
+  Cleans up SQPOLL resources.
+
+### statx.h
+Declares preparation, execution, and cleanup functions for statx operations in io_uring. Provides interfaces for asynchronous file status queries, integrating with kernel statx APIs to retrieve extended file metadata efficiently.
+
+**Function specifications:**
+- `int io_statx_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a statx operation.
+- `int io_statx(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a statx operation.
+- `void io_statx_cleanup(struct io_kiocb *req);`
+  Cleans up resources associated with a statx operation.
+
+### sync.h
+Declares preparation and execution functions for file synchronization operations in io_uring, including fsync, sync_file_range, and fallocate. Provides interfaces for preparing and executing these operations asynchronously, ensuring data integrity and efficient file space management.
+
+**Function specifications:**
+- `int io_fsync_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares an fsync operation.
+- `int io_fsync(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes an fsync operation.
+- `int io_sync_file_range_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a sync_file_range operation.
+- `int io_sync_file_range(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a sync_file_range operation.
+- `int io_fallocate_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a fallocate operation.
+- `int io_fallocate(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a fallocate operation.
+
+### splice.h
+Declares preparation, execution, and cleanup functions for splice and tee operations in io_uring. Provides interfaces for asynchronous data transfer between file descriptors using kernel splice/tee mechanisms, enabling zero-copy data movement and efficient pipeline construction.
+
+**Function specifications:**
+- `int io_splice_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a splice operation.
+- `int io_splice(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a splice operation.
+- `void io_splice_cleanup(struct io_kiocb *req);`
+  Cleans up resources associated with a splice operation.
+- `int io_tee_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a tee operation.
+- `int io_tee(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a tee operation.
+
+### tctx.h
+Declares data structures and functions for managing per-task io_uring context nodes. Provides interfaces for allocating, adding, and cleaning up task context nodes, as well as registering/unregistering ring file descriptors. Supports efficient tracking and cancellation of io_uring operations per task.
+
+**Function specifications:**
+- `struct io_uring_task *io_uring_get_task_ctx(struct task_struct *task);`
+  Retrieves the io_uring task context for a given task.
+- `void io_uring_put_task_ctx(struct io_uring_task *tctx);`
+  Releases a reference to the io_uring task context.
+- `int io_uring_add_task_ctx(struct io_ring_ctx *ctx, struct io_uring_task *tctx);`
+  Adds a task context node to the io_uring context.
+- `void io_uring_remove_task_ctx(struct io_ring_ctx *ctx, struct io_uring_task *tctx);`
+  Removes a task context node from the io_uring context.
+- `int io_uring_register_ring_fd(struct io_ring_ctx *ctx, int fd);`
+  Registers a ring file descriptor with the io_uring context.
+- `void io_uring_unregister_ring_fd(struct io_ring_ctx *ctx, int fd);`
+  Unregisters a ring file descriptor from the io_uring context.
+
+### timeout.h
+Declares data structures and functions for managing timeouts in io_uring. Provides interfaces for preparing, executing, and cancelling timeout requests, as well as handling linked timeouts and flushing outstanding timeouts. Integrates with kernel hrtimer APIs for precise asynchronous timeout management.
+
+**Function specifications:**
+- `int io_timeout_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a timeout operation.
+- `int io_timeout(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a timeout operation.
+- `int io_timeout_remove_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a timeout removal operation.
+- `int io_timeout_remove(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a timeout removal operation.
+- `void io_flush_timeouts(struct io_ring_ctx *ctx);`
+  Flushes all outstanding timeouts in the context.
+
+### truncate.h
+Declares preparation and execution functions for ftruncate operations in io_uring. Provides interfaces for asynchronously truncating files to a specified length, integrating with kernel file truncation mechanisms.
+
+**Function specifications:**
+- `int io_ftruncate_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares an ftruncate operation.
+- `int io_ftruncate(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes an ftruncate operation.
+
+### uring_cmd.h
+Declares data structures and functions for handling custom uring commands (uring_cmd) in io_uring. Provides interfaces for preparing, executing, and cleaning up uring_cmd requests, as well as importing fixed user vectors and supporting cancellation of in-flight commands. Enables integration of device-specific or custom kernel commands with the io_uring asynchronous model.
+
+**Function specifications:**
+- `int io_uring_cmd(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a uring_cmd operation for the given request.
+- `int io_uring_cmd_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a uring_cmd operation from a submission queue entry.
+- `void io_uring_cmd_cleanup(struct io_kiocb *req);`
+  Cleans up resources associated with a uring_cmd request.
+- `bool io_uring_try_cancel_uring_cmd(struct io_ring_ctx *ctx, struct io_uring_task *tctx, bool cancel_all);`
+  Attempts to cancel uring_cmd requests in the given context and task.
+- `void io_cmd_cache_free(const void *entry);`
+  Frees a cached uring_cmd entry.
+- `int io_uring_cmd_import_fixed_vec(struct io_uring_cmd *ioucmd, const struct iovec __user *uvec, size_t uvec_segs, int ddir, struct iov_iter *iter, unsigned issue_flags);`
+  Imports a fixed user vector for use in a uring_cmd operation.
+
+---
+
+### waitid.h
+Declares data structures and functions for supporting asynchronous waitid operations in io_uring. Provides interfaces for preparing, executing, and cancelling waitid requests, as well as removing all matching waitid operations from a context. Integrates with kernel process exit and wait mechanisms to enable non-blocking process state change notifications.
+
+**Function specifications:**
+- `int io_waitid_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a waitid operation from a submission queue entry.
+- `int io_waitid(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a waitid operation for the given request.
+- `int io_waitid_cancel(struct io_ring_ctx *ctx, struct io_cancel_data *cd, unsigned int issue_flags);`
+  Cancels a waitid operation matching the given cancel data.
+- `bool io_waitid_remove_all(struct io_ring_ctx *ctx, struct io_uring_task *tctx, bool cancel_all);`
+  Removes all matching waitid operations from the context.
+
+---
+
+### xattr.h
+Declares function prototypes for extended attribute (xattr) operations in io_uring. Provides interfaces for preparing, executing, and cleaning up setxattr and getxattr requests, supporting both file-descriptor-based and path-based variants. Enables asynchronous manipulation and retrieval of extended file attributes.
+
+**Function specifications:**
+- `void io_xattr_cleanup(struct io_kiocb *req);`
+  Cleans up resources associated with an xattr request.
+- `int io_fsetxattr_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a file-descriptor-based setxattr operation.
+- `int io_fsetxattr(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a file-descriptor-based setxattr operation.
+- `int io_setxattr_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a path-based setxattr operation.
+- `int io_setxattr(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a path-based setxattr operation.
+- `int io_fgetxattr_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a file-descriptor-based getxattr operation.
+- `int io_fgetxattr(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a file-descriptor-based getxattr operation.
+- `int io_getxattr_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a path-based getxattr operation.
+- `int io_getxattr(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a path-based getxattr operation.
+
+---
+
+### zcrx.h
+Declares data structures and functions for zero-copy receive (ZCRX) support in io_uring. Provides interfaces for registering and unregistering ZCRX interface queues, handling zero-copy receive operations, and managing ZCRX areas and interface queues. Integrates with kernel networking and memory management to enable high-performance, zero-copy network data reception.
+
+**Function specifications:**
+- `int io_register_zcrx_ifq(struct io_ring_ctx *ctx, struct io_uring_zcrx_ifq_reg __user *arg);`
+  Registers a ZCRX interface queue for the given context.
+- `void io_unregister_zcrx_ifqs(struct io_ring_ctx *ctx);`
+  Unregisters all ZCRX interface queues for the context.
+- `void io_shutdown_zcrx_ifqs(struct io_ring_ctx *ctx);`
+  Shuts down all ZCRX interface queues for the context.
+- `int io_zcrx_recv(struct io_kiocb *req, struct io_zcrx_ifq *ifq, struct socket *sock, unsigned int flags, unsigned issue_flags, unsigned int *len);`
+  Performs a zero-copy receive operation using the specified interface queue and socket.
+- `int io_recvzc(struct io_kiocb *req, unsigned int issue_flags);`
+  Executes a zero-copy receive operation.
+- `int io_recvzc_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);`
+  Prepares a zero-copy receive operation from a submission queue entry.
