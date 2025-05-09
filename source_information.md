@@ -35,6 +35,78 @@ Implements the main logic for the io_uring subsystem, including initialization, 
 ### io-wq.c
 Implements the basic worker thread pool for io_uring (io-wq). Manages the creation, scheduling, and destruction of worker threads for asynchronous I/O execution. Handles work queueing, worker activation, concurrency control via work hashing, and dynamic scaling of worker pools. Provides mechanisms for work cancellation, CPU affinity management, and integration with kernel task and resource management. Ensures efficient, scalable, and safe execution of asynchronous I/O operations in both bounded and unbounded worker pool configurations.
 
+### kbuf.c
+Implements the management of kernel and user-provided buffers for io_uring operations. This file provides the logic for buffer group registration, buffer selection (including both classic and ring-mapped buffer models), buffer recycling, and removal. It supports dynamic buffer allocation, buffer ring management, and buffer lifecycle tracking, enabling efficient zero-copy I/O and high-throughput asynchronous operations. The code handles buffer selection for I/O requests, buffer commit and recycling after use, and integration with the io_uring context for both legacy and modern buffer models. It also manages buffer group IDs, buffer rings, and provides mechanisms for buffer peeking, buffer removal, and buffer destruction, ensuring safe and efficient buffer handling in concurrent environments.
+
+### memmap.c
+Implements memory mapping and region management for io_uring, providing the infrastructure for mapping user and kernel memory regions into the io_uring context. This file handles pinning user pages, allocating and freeing memory regions, and managing mapped regions for sharing buffers between user and kernel space. It supports both user-provided and kernel-allocated memory, including huge pages and compound pages, and integrates with the kernel's mmap and VM infrastructure. The code ensures safe and efficient memory operations for io_uring rings and buffer rings, including validation of mmap requests, region allocation, and cleanup. It also provides support for both MMU and NOMMU systems, handling architecture-specific requirements for memory mapping and unmapped area allocation.
+
+### msg_ring.c
+Implements message ring operations for io_uring, enabling inter-ring communication and resource sharing between different io_uring instances. This file provides the logic for preparing, executing, and cleaning up message ring requests, including data transfer and file descriptor passing between rings. It manages locking and synchronization between source and target rings, supports both local and remote completion, and integrates with the io_uring context for efficient asynchronous messaging. The code ensures correct handling of message ring commands, resource management, and error reporting, facilitating advanced use cases such as cross-ring signaling and resource sharing.
+
+### napi.c
+Implements NAPI (New API) integration for io_uring, enabling efficient busy-polling and network receive operations. This file manages the registration and removal of NAPI IDs, tracks NAPI entries, and provides busy-poll loops for both static and dynamic tracking modes. It integrates with the kernel's network stack to support low-latency I/O, busy-poll timeouts, and cleanup of stale NAPI entries. The code supports both static and dynamic NAPI tracking, busy-poll loop execution, and integration with io_uring's wait queues, enhancing network performance and responsiveness for io_uring workloads.
+
+### net.c
+Implements asynchronous network operations in io_uring, including preparation, execution, and cleanup routines for socket, send, receive, shutdown, bind, listen, and accept operations. This file handles message header parsing, buffer selection, and integration with kernel networking APIs. It supports zero-copy send and receive, multishot operations, and efficient resource management for high-performance asynchronous networking. The code manages socket state, message preparation, buffer management, and completion handling, ensuring robust and scalable network I/O through io_uring.
+
+### nop.c
+Implements the no-operation (NOP) request for io_uring. This file provides preparation and execution routines for NOP operations, supporting optional result injection, file and buffer selection, and integration with the io_uring request lifecycle. The NOP operation is used for testing, benchmarking, or as a placeholder, and is designed to have minimal overhead while still supporting the full range of io_uring request features, such as fixed files and buffers.
+
+### notif.c
+Implements notification handling for io_uring, particularly for zero-copy and asynchronous completion notifications. This file manages notification objects, memory accounting, and completion signaling, enabling efficient user-space notification of I/O completion events. It handles linking of notifications, reference counting, and integration with network stack zero-copy mechanisms. The code ensures correct notification delivery, resource cleanup, and memory accounting for notifications associated with asynchronous I/O operations.
+
+### opdef.c
+Implements the operation definition tables and dispatch logic for io_uring opcodes. This file defines the properties, capabilities, and handler function pointers for each supported opcode, enabling flexible and efficient dispatch of io_uring operations. It provides mechanisms for opcode support checking, initialization of operation tables, and association of cleanup and failure handlers for each operation. The code ensures that each io_uring operation is correctly mapped to its implementation, supporting extensibility and maintainability of the io_uring subsystem.
+
+### openclose.c
+Implements preparation, execution, and cleanup routines for open, openat2, and close operations in io_uring. This file manages file descriptor allocation, installation into fixed file tables, and resource cleanup. It handles both regular and fixed file descriptors, integrates with kernel file and resource management, and ensures proper synchronization and error handling for asynchronous file open/close operations. The code supports advanced features such as fixed file installation, O_PATH handling, and integration with io_uring's asynchronous execution model.
+
+### poll.c
+Implements poll-based event notification for io_uring. This file provides preparation, execution, and cancellation routines for poll add and remove operations, supports multishot and level-triggered polling, and manages poll request state, reference counting, and wait queue integration. It handles efficient asynchronous event monitoring, cancellation, and completion, integrating with the kernel's poll and wait queue infrastructure. The code ensures correct handling of poll ownership, event delivery, and resource cleanup, supporting scalable and responsive event-driven I/O.
+
+### register.c
+Implements the logic for the io_uring_register() syscall and related registration operations. This file handles registration and unregistration of buffers, files, eventfds, personalities, restrictions, and other resources with the io_uring context. It manages resource updates, ring resizing, memory region registration, and CPU affinity for worker threads. The code ensures proper synchronization, validation, and error handling for all registration-related operations, supporting dynamic resource management and extensibility of the io_uring subsystem.
+
+### rsrc.c
+Implements resource management for io_uring, including registration, update, and unregistration of files and buffers. This file manages resource nodes, memory accounting, and reference counting for registered resources. It handles buffer pinning, coalescing, and validation, supports resource updates and cloning, and integrates with the io_uring context for efficient resource tracking and cleanup. The code ensures safe and efficient management of registered files and buffers, supporting advanced features such as buffer coalescing, sparse registration, and resource cloning.
+
+### rw.c
+Implements asynchronous read and write operations for io_uring, including preparation, execution, and cleanup routines for various read/write variants (fixed, vectored, multishot). This file manages I/O vectors, buffer selection, metadata, and completion handling. It supports both direct and buffered I/O, integrates with kernel file and block I/O APIs, and provides mechanisms for retry, reissue, and efficient completion of high-performance asynchronous file operations. The code handles complex scenarios such as multishot reads, hybrid polling, and metadata management, ensuring robust and scalable file I/O.
+
+### splice.c
+Implements splice and tee operations for io_uring, enabling zero-copy data transfer between file descriptors. This file provides preparation, execution, and cleanup routines for splice and tee requests, manages resource nodes for fixed file descriptors, and integrates with kernel splice/tee mechanisms. It supports asynchronous pipeline construction, efficient data movement without intermediate copying, and advanced features such as fixed file handling and resource cleanup.
+
+### sqpoll.c
+Implements submission queue polling (SQPOLL) support for io_uring. This file manages the SQPOLL kernel thread, context lists, synchronization, and CPU affinity. It handles thread creation, parking, un-parking, and cleanup, supports offloaded submission queue processing, and integrates with kernel scheduling and audit mechanisms for efficient and scalable submission handling. The code ensures correct management of SQPOLL threads, context attachment, and event handling, supporting high-throughput and low-latency submission processing.
+
+### statx.c
+Implements asynchronous statx operations for io_uring, providing preparation, execution, and cleanup routines for file status queries. This file handles translation of submission queue entries to statx requests, manages user-space path arguments, and integrates with kernel statx APIs to retrieve extended file metadata efficiently and asynchronously. The code ensures proper resource allocation, error handling, and cleanup for statx operations, supporting advanced file metadata queries in an asynchronous context.
+
+### sync.c
+Implements file synchronization operations for io_uring, including fsync, sync_file_range, and fallocate. This file provides preparation and execution routines for these operations, manages request state, and integrates with kernel file system APIs to ensure data integrity and efficient file space management in an asynchronous context. The code handles parameter validation, error checking, and resource cleanup, supporting robust and efficient file synchronization and allocation operations.
+
+### tctx.c
+Implements per-task io_uring context management. This file handles allocation, addition, and cleanup of task context nodes, registration and unregistration of ring file descriptors, and management of worker thread pools. It supports efficient tracking and cancellation of io_uring operations per task, integrates with kernel task and resource management, and ensures proper synchronization and cleanup. The code manages task-specific data structures, worker pool initialization, and resource cleanup on task exit, supporting scalable and robust per-task io_uring management.
+
+### timeout.c
+Implements timeout management for io_uring, including preparation, execution, cancellation, and update of timeout requests. This file manages linked and multishot timeouts, integrates with kernel hrtimer APIs for precise timing, and handles flushing, disarming, and completion of outstanding timeouts. The code supports efficient asynchronous timeout handling, linked timeout chains, and integration with the io_uring request lifecycle, ensuring robust and flexible timeout management for asynchronous operations.
+
+### truncate.c
+Implements asynchronous ftruncate operations for io_uring. This file provides preparation and execution routines for truncating files to a specified length, integrates with kernel file truncation mechanisms, and ensures proper error handling and completion reporting. The code validates parameters, manages request state, and supports both blocking and non-blocking execution, enabling efficient and safe file truncation in an asynchronous context.
+
+### uring_cmd.c
+Implements custom uring command (uring_cmd) support for io_uring. This file handles preparation, execution, and cleanup of uring_cmd requests, supports importing fixed user vectors, and enables integration of device-specific or custom kernel commands with the io_uring asynchronous model. The code manages cancellation, completion, and task work handling for uring_cmd operations, providing a flexible mechanism for extending io_uring with custom or device-specific commands.
+
+### waitid.c
+Implements asynchronous waitid support for io_uring, enabling non-blocking process state change notifications. This file provides preparation, execution, and cancellation routines for waitid requests, allowing user space to wait for process events (such as child exit) asynchronously. It manages the allocation and cleanup of waitid-specific data structures, integrates with kernel wait queues, and handles signal information copying to user space. The code ensures safe reference counting, supports cancellation and removal of pending waitid requests, and coordinates with the io_uring task work system to complete requests in response to process events or explicit cancellation.
+
+### xattr.c
+Implements extended attribute (xattr) operations for io_uring, supporting asynchronous manipulation and retrieval of file and directory extended attributes. The file provides preparation, execution, and cleanup routines for both file-descriptor-based and path-based setxattr and getxattr requests. It manages kernel and user-space buffers for attribute names and values, handles memory allocation and cleanup, and integrates with kernel xattr APIs. The code ensures proper error handling, supports forced asynchronous execution, and manages resource cleanup for both successful and failed operations, enabling robust and efficient xattr handling in an asynchronous context.
+
+### zcrx.c
+Implements zero-copy receive (ZCRX) support for io_uring, enabling high-performance, zero-copy network data reception. This file manages the registration and unregistration of ZCRX interface queues, mapping and unmapping of memory areas, and the allocation and recycling of network I/O vectors (net_iov). It integrates with kernel networking and DMA APIs to efficiently map user memory for device access, manages per-queue and per-area state, and provides mechanisms for refilling and reclaiming receive buffers. The code supports asynchronous data delivery to user space, handles buffer reference counting, and ensures safe cleanup of resources. It also implements the core logic for receiving TCP data directly into user-mapped buffers, minimizing data copies and maximizing throughput for network I/O workloads.
+
 ## Headers
 ### advise.h
 Declares the function prototypes for preparing and executing madvise and fadvise operations in io_uring. This header provides the interface for the corresponding implementation in advise.c, allowing other parts of the kernel to invoke memory and file advice operations through io_uring requests.
@@ -445,6 +517,15 @@ Declares data structures and functions for notification handling in io_uring, pa
   Completes a notification request with the specified result.
 - `void io_notif_account_mem(struct io_ring_ctx *ctx, ssize_t size);`
   Accounts for memory usage by notification objects.
+
+### opdef.h
+Declares the operation definition tables and structures used to describe the properties and handlers for each io_uring opcode. Defines `io_issue_def` for specifying per-opcode requirements, capabilities, and function pointers for preparation and issue routines, as well as `io_cold_def` for optional cleanup and failure handlers. Provides the central mechanism for associating opcodes with their implementation details, enabling flexible and efficient dispatch of io_uring operations.
+
+**Function specifications:**
+- `bool io_uring_op_supported(u8 opcode);`
+  Returns true if the given opcode is supported by io_uring.
+- `void io_uring_optable_init(void);`
+  Initializes the io_uring operation definition tables.
 
 ### openclose.h
 Declares preparation, execution, and cleanup functions for open, openat2, and close operations in io_uring. Provides interfaces for managing file descriptors, including support for fixed file tables and installation of fixed file descriptors, enabling efficient asynchronous file open/close operations.
