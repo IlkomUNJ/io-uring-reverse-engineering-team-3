@@ -83,6 +83,15 @@ io_futex_data | io_uring/futex.c | futex_q, io_kiocb | __io_futex_cancel | io_ur
 io_defer_entry | io_uring/io_uring.c | list_head, io_kiocb, u32 | io_queue_deferred | io_uring/io_uring.c | local variable
 | | | | io_drain_req | io_uring/io_uring.c | local variable
 | | | | io_cancel_defer_files | io_uring/io_uring.c | local variable
+ext_arg | io_uring/io_uring.c | size_t, timespec64, sigset_t, ktime_t, bool, bool | __io_cqring_wait_schedule | io_uring/io_uring.c | function parameter
+| | | | io_cqring_wait_schedule | io_uring/io_uring.c | function parameter
+| | | | io_cqring_wait | io_uring/io_uring.c | function parameter
+| | | | io_get_ext_arg | io_uring/io_uring.c | function parameter
+| | | | io_uring_enter | io_uring/io_uring.c | local variable
+io_tctx_exit | io_uring/io_uring.c | callback_head, completion, io_ring_ctx | io_tctx_exit_cb | io_uring/io_uring.c | local variable
+| | | | io_ring_exit_work | io_uring/io_uring.c | local variable
+io_task_cancel | io_uring/io_uring.c | io_uring_task, bool | io_cancel_task_cb | io_uring/io_uring.c | local variable
+| | | | io_uring_try_cancel_requests | io_uring/io_uring.c | local variable
 io_wait_queue | io_uring/io_uring.h | wait_queue_entry, io_ring_ctx, uint, uint, uint, int, ktime_t, ktime_t, hrtimer, ktime_t, bool | io_should_wake | io_uring/io_uring.h | function parameter
 | | | | io_wake_function | io_uring/io_uring.c | local variable
 | | | | io_cqring_timer_wakeup | io_uring/io_uring.c | local variable
@@ -215,6 +224,8 @@ io_cb_cancel_data | io_uring/io-wq.c | work_cancel_fn, void, int, int, bool | io
 | | | | io_wq_cancel_running_work | io_uring/io-wq.c | function parameter
 | | | | io_wq_cancel_cb | io_uring/io-wq.c | local variable
 | | | | io_wq_destroy | io_uring/io-wq.c | local variable
+online_data | io_uring/io-wq.c | uint, bool | io_wq_worker_affinity | io_uring/io-wq.c | local variable
+| | | | __io_wq_cpu_online | io_uring/io-wq.c | local variable
 io_wq_hash | io_uring/io-wq.h | refcount_t, ulong, wait_queue_head | io_wq_put_hash | io_uring/io-wq.h | function parameter
 | | | | io_init_wq_offload | io_uring/tctx.c | local variable
 io_wq_data | io_uring/io-wq.h | io_wq_hash, task_struct, io_wq_work_fn, free_work_fn | io_wq_create | io_uring/io-wq.h | function parameter
