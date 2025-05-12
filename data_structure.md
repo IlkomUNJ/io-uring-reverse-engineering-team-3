@@ -12,6 +12,8 @@ io_ev_fd | io_uring/eventfd.c | eventfd_ctx, uint, uint, refcount_t, atomic_t, r
 | | | | io_eventfd_flush_signal | io_uring/eventfd.c | local variable
 | | | | io_eventfd_register | io_uring/eventfd.c | local variable
 | | | | io_eventfd_unregister | io_uring/eventfd.c | function parameter
+| | | | io_eventfd_release | io_uring/eventfd.c | function parameter
+| | | | io_eventfd_trigger | io_uring/eventfd.c | function parameter
 io_fadvise | io_uring/advise.c | file, u64 offset, u64 len, u32 advice | io_fadvise_force_async | io_uring/advise.c | function parameter
 | | | | io_fadvise_prep | io_uring/advise.c | local variable
 | | | | io_fadvise | io_uring/advise.c | local variable
