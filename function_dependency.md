@@ -1,7 +1,7 @@
 # Task 2: Dependency Injection
 For this assigment, we want a little clarity regarding what kind of functions being imported and used on each source. Do note, we record all function actually being used by the source including function defined by itself if actually used inside the file. For the sake of completion, it's better if you straight disregard include list on the source. Instead, trace each function being used to the declared source.
 
-Source | Libary | Function utilized | Time Used
+Source | Library | Function Utilized | Times Used
 -------|--------|--------------| ------------------
 alloc_cache.h | /include/linux/kasan.h | kasan_mempool_unpoison_object | 2
 | | arch/x86/include/asm/string_64.h| memset | 1
@@ -995,4 +995,5 @@ kbuf.h | io_uring/kbuf.h | io_buffer_select | 1
 | | io_uring/kbuf.h | io_kbuf_recycle | 1
 | | io_uring/kbuf.h | io_put_kbuf | 1
 | | io_uring/kbuf.h | io_put_kbufs | 1
+
 Continue with the list untill all functions used in each source are listed.
