@@ -3,17 +3,6 @@ The objective of this task is to document all internal data structures defined i
 
 Structure name | Defined in | Attributes | Caller Functions Source | source caller | usage
 ---------------|------------|------------|-------------------------|---------------|-------------------
-io_ev_fd | io_uring/eventfd.c | eventfd_ctx, uint, uint, refcount_t, atomic_t, rcu_head | io_eventfd_free | io_uring/eventfd.c | local variable
-| | | | io_eventfd_put | io_uring/eventfd.c | function parameter
-| | | | io_eventfd_do_signal | io_uring/eventfd.c | local variable, function parameter
-| | | | __io_eventfd_signal | io_uring/eventfd.c | function parameter
-| | | | io_eventfd_grab | io_uring/eventfd.c | return value, local variable
-| | | | io_eventfd_signal | io_uring/eventfd.c | local variable 
-| | | | io_eventfd_flush_signal | io_uring/eventfd.c | local variable
-| | | | io_eventfd_register | io_uring/eventfd.c | local variable
-| | | | io_eventfd_unregister | io_uring/eventfd.c | function parameter
-| | | | io_eventfd_release | io_uring/eventfd.c | function parameter
-| | | | io_eventfd_trigger | io_uring/eventfd.c | function parameter
 io_fadvise | io_uring/advise.c | file, u64 offset, u64 len, u32 advice | io_fadvise_force_async | io_uring/advise.c | function parameter
 | | | | io_fadvise_prep | io_uring/advise.c | local variable
 | | | | io_fadvise | io_uring/advise.c | local variable
@@ -53,6 +42,17 @@ io_epoll | io_uring/epoll.c | file, int, int, int, epoll_event | io_epoll_ctl_pr
 | | | | io_epoll_ctl | io_uring/epoll.c | local variable
 io_epoll_wait | io_uring/epoll.c | file, int, epoll_event | io_epoll_wait_prep | io_uring/epoll.c | local variable
 | | | | io_epoll_wait | io_uring/epoll.c | local variable
+io_ev_fd | io_uring/eventfd.c | eventfd_ctx, uint, uint, refcount_t, atomic_t, rcu_head | io_eventfd_free | io_uring/eventfd.c | local variable
+| | | | io_eventfd_put | io_uring/eventfd.c | function parameter
+| | | | io_eventfd_do_signal | io_uring/eventfd.c | local variable, function parameter
+| | | | __io_eventfd_signal | io_uring/eventfd.c | function parameter
+| | | | io_eventfd_grab | io_uring/eventfd.c | return value, local variable
+| | | | io_eventfd_signal | io_uring/eventfd.c | local variable 
+| | | | io_eventfd_flush_signal | io_uring/eventfd.c | local variable
+| | | | io_eventfd_register | io_uring/eventfd.c | local variable
+| | | | io_eventfd_unregister | io_uring/eventfd.c | function parameter
+| | | | io_eventfd_release | io_uring/eventfd.c | function parameter
+| | | | io_eventfd_trigger | io_uring/eventfd.c | function parameter
 io_rename | io_uring/fs.c | file, int, int, filename, filename, int | io_renameat_prep | io_uring/fs.c | local variable
 | | | | io_renameat | io_uring/fs.c | local variable
 | | | | io_renameat_cleanup | io_uring/fs.c | local variable
