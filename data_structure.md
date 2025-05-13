@@ -271,7 +271,215 @@ buf_sel_arg | io_uring/kbuf.h | iovec, size_t, size_t, ushort, ushort | io_buffe
 | | | | io_buffers_peek | io_uring/kbuf.c | function parameter
 | | | | io_send_select_buffer | io_uring/net.c | local variable
 | | | | io_recv_buf_select | io_uring/net.c | local variable
-
+io_msg | io_uring/msg_ring.c | file, callback_head, u64, u32 | io_msg_ring_cleanup | io_uring/msg_ring.c | local variable
+| | | io_msg_data_remote | io_uring/msg_ring.c | function parameter 
+| | | __io_msg_ring_data | io_uring/msg_ring.c | local variable
+| | | io_msg_ring_data | io_uring/msg_ring.c | function parameter
+| | | io_msg_grab_file | io_uring/msg_ring.c  | local variable
+| | | io_msg_install_complete | io_uring/msg_ring.c | local variable
+| | | io_msg_tw_fd_complete | io_uring/msg_ring.c | local variable
+| | | io_msg_fd_remote | io_uring/msg_ring.c | local variable
+| | | io_msg_send_fd | io_uring/msg_ring.c  | local variable
+| | | __io_msg_ring_prep | io_uring/msg_ring.c  | function parameter
+| | | io_msg_ring_prep | io_uring/msg_ring.c | function parameter
+| | | io_msg_ring | io_uring/msg_ring.c | local variable
+| | | io_uring_sync_msg_ring | io_uring/msg_ring.c | local variable
+io_napi_entry | io_uring/napi.c | uint, list_head, ulong, rcu_head | io_napi_hash_find | io_uring/napi.c | function parameter
+| | | __io_napi_add_id | io_uring/napi.c | local variable
+| | | __io_napi_del_id | io_uring/napi.c | local variable
+| | | __io_napi_remove_stale | io_uring/napi.c | local variable
+| | | static_tracking_do_busy_loop | io_uring/napi.c | local variable
+| | | dynamic_tracking_do_busy_loop| io_uring/napi.c | local variable
+| | | io_napi_free | io_uring/napi.c | local variable
+io_shutdown | io_uring/net.c | file, int | io_shutdown_prep | io_uring/net.c | local variable
+| | | io_shutdown | io_uring/net.c | local variable
+io_accept | io_uring/net.c | file, sockaddr, _user, int, u32, ulong | io_accept_prep | io_uring/net.c | local variable
+| | | io_accept | io_uring/net.c | local variable
+io_socket | io_uring/net.c  | file, int, u32, ulong | io_socket_prep | io_uring/net.c | local variable
+| | | io_socket | io_uring/net.c | local variable
+io_connect | io_uring/net.c | file, sockaddr, int, bool | io_connect_prep | io_uring/net.c  | local variable
+| | | io_connect | io_uring/net.c | local variable
+io_bind | io_uring/net.c | file, int | io_bind_prep | io_uring/net.c | local variable
+| | | io_bind_prep | io_uring/net.c | local variable
+io_listen | io_uring/net.c | file, int | io_listen_prep | io_uring/net.c | local variable
+| | | io_listen | io_uring/net.c | local variable
+io_sr_msg | io_uring/net.c | file, union, int, unsigned, u16, bool, void __user, io_kiocb | io_mshot_prep_retry | io_uring/net.c | local variable
+| | | io_compat_msg_copy_hdr | io_uring/net.c | local variable
+| | | io_msg_copy_hdr | io_uring/net.c | local variable
+| | | io_send_setup | io_uring/net.c | local variable
+| | | io_sendmsg_setup | io_uring/net.c | local variable
+| | | io_sendmsg_prep | io_uring/net.c | local variable
+| | | io_send_finish | io_uring/net.c | local variable
+| | | io_sendmsg | io_uring/net.c | local variable
+| | | io_send_select_buffer | io_uring/net.c | local variable
+| | | io_send | io_uring/net.c | local variable
+| | | io_recvmsg_prep_setup | io_uring/net.c | local variable
+| | | io_recvmsg_prep | io_uring/net.c | local variable
+| | | io_recv_finish| io_uring/net.c | local variable
+| | | io_recvmsg_prep_multishot | io_uring/net.c | function parameter
+| | | io_recvmsg | io_uring/net.c | local variable
+| | | io_recv_buf_select | io_uring/net.c | local variable
+| | | io_recv | io_uring/net.c | local variable
+| | | io_send_zc_cleanup | io_uring/net.c | local variable
+| | | io_send_zc_prep | io_uring/net.c | local variable
+| | | io_send_zc_import | io_uring/net.c | local variable
+| | | io_send_zc | io_uring/net.c | local variable
+| | | io_sendmsg_zc | io_uring/net.c | local variable
+| | | io_sendrecv_fail | io_uring/net.c | local variable
+io_recvzc | io_uring/net.c | file, unsigned, u16, u32, io_zcrx_ifq | io_recvzc_prep | io_uring/net.c | local variable
+| | | io_recvzc | io_uring/net.c | local variable
+io_recvmsg_multishot_hdr |  io_uring/net.c | msg, addr | io_recvmsg_multisho | io_uring/net.c | local variable
+io_async_msghdr | io_uring/net.h | iou_vec, group, int, __kernel_size_t, sockaddr, msghdr, sockaddr_storage | io_netmsg_iovec_free | io_uring/net.c | function parameter 
+| | | io_netmsg_recycle | io_uring/net.c | local variable
+| | | io_msg_alloc_async | io_uring/net.c | local variable
+| | | io_mshot_prep_retry | io_uring/net.c | function parameter
+| | | io_net_import_vec | io_uring/net.c | function parameter
+| | | io_compat_msg_copy_hdr | io_uring/net.c | function parameter
+| | | io_msg_copy_hdr | io_uring/net.c | function parameter
+| | | io_sendmsg_recvmsg_cleanup | io_uring/net.c | local variable
+| | | io_send_setup | io_uring/net.c | local variable
+| | | io_sendmsg_setup | io_uring/net.c | local variable
+| | | io_bundle_nbufs | io_uring/net.c | function parameter
+| | | io_send_finish | io_uring/net.c | function parameter
+| | | io_sendmsg | io_uring/net.c | local variable
+| | | io_send_select_buffer | io_uring/net.c | function parameter
+| | | io_send | io_uring/net.c | local variable
+| | | io_recvmsg_mshot_prep | io_uring/net.c | function parameter
+| | | io_recvmsg_copy_hdr | io_uring/net.c | function parameter
+| | | io_recvmsg_prep_setup | io_uring/net.c | local variable
+| | | io_recv_finish | io_uring/net.c | function parameter
+| | | io_recvmsg_prep_multishot | io_uring/net.c | function parameter
+| | | io_recvmsg_multishot | io_uring/net.c | function parameter
+| | | io_recvmsg | io_uring/net.c | local variable
+| | | io_recv_buf_select | io_uring/net.c | function parameter
+| | | io_recv | io_uring/net.c | local variable
+| | | io_send_zc_cleanup | io_uring/net.c | local variable
+| | | io_send_zc_prep | io_uring/net.c | local variable
+| | | io_send_zc_import | io_uring/net.c | local variable
+| | | io_send_zc | io_uring/net.c | local variable
+| | | io_sendmsg_zc | io_uring/net.c | local variable
+| | | io_connect_prep | io_uring/net.c | local variable
+| | | io_connect | io_uring/net.c | local variable
+| | | io_bind_prep | io_uring/net.c | local variable
+| | | io_bind | io_uring/net.c | local variable
+| | | io_netmsg_cache_free | io_uring/net.c | local variable
+io_nop | io_uring/nop.c | file, int, uint | io_nop_prep | io_uring/nop.c | local variable
+| | | io_nop | io_uring/nop.c | local variable
+io_notif_data | io_uring/notif.h | file, ubuf_info, io_notif_data, unsigned, bool | io_notif_to_data | io_uring/notif.h | local variable
+| | | io_notif_flush | io_uring/notif.h | local variable 
+| | | io_notif_account_mem | io_uring/notif.h | local variable 
+io_open | io_uring/openclose.c | file, int, u32, filename, open_how, ulong | io_openat_force_async | io_uring/openclose.c | function parameter
+| | | __io_openat_prep | io_uring/openclose.c | local variable
+| | | io_openat_prep | io_uring/openclose.c | local variable
+| | | io_openat2_prep | io_uring/openclose.c | local variable
+| | | io_openat2 | io_uring/openclose.c | local variable
+| | | io_open_cleanup | io_uring/openclose.c | local variable
+io_close | io_uring/openclose.c | file, int, u32 | io_close_fixed | io_uring/openclose.c | local variable
+| | | io_close_prep | io_uring/openclose.c | local variable
+| | | io_close | io_uring/openclose.c | local variable
+io_fixed_install | io_uring/openclose.c | file, int | io_install_fixed_fd_prep | io_uring/openclose.c | local variable
+| | | io_install_fixed_fd | io_uring/openclose.c | local variable
+io_poll_update | io_uring/poll.c | file, u64, __poll_t, bool | io_poll_remove_prep | io_uring/poll.c | local variable
+| | | io_poll_remove | io_uring/poll.c | local variable
+io_poll_table | io_uring/poll.c | poll_table_struct, io_kiocb, int, bool, _poll_t | __io_queue_proc | io_uring/poll.c | function parameter
+| | | io_poll_queue_proc | io_uring/poll.c | local variable 
+| | | io_poll_can_finish_inline | io_uring/poll.c | function parameter
+| | | __io_arm_poll_handler | io_uring/poll.c | function parameter
+| | | io_async_queue_proc | io_uring/poll.c | local variable 
+| | | io_arm_poll_handler | io_uring/poll.c | local variable 
+| | | io_poll_add | io_uring/poll.c | local variable 
+io_poll | io_uring/poll.h | file, wait_queue_head, __poll_t, int, wait_queue_entry | io_poll_get_double | io_uring/poll.c | local variable
+| | | io_poll_get_single | io_uring/poll.c | local variable
+| | | io_init_poll_iocb | io_uring/poll.c | function parameter
+| | | io_poll_remove_entry | io_uring/poll.c | function parameter
+| | | io_pollfree_wake | io_uring/poll.c | function parameter
+| | | io_poll_wake | io_uring/poll.c | local variable
+| | | io_poll_double_prepare | io_uring/poll.c | local variable
+| | | __io_queue_proc | io_uring/poll.c | function parameter
+| | | io_poll_queue_proc | io_uring/poll.c | local variable
+| | | __io_arm_poll_handler | io_uring/poll.c | function parameter
+| | | io_poll_add_prep | io_uring/poll.c | local variable
+| | | io_poll_add | io_uring/poll.c | local variable
+async_poll | io_uring/poll.h | io_poll | io_async_queue_proc | io_uring/poll.c | local variable
+| | | io_req_alloc_apoll | io_uring/poll.c | local variable
+| | | io_arm_poll_handler| io_uring/poll.c | local variable
+io_ring_ctx_rings | io_uring/register.c | io_rings, io_uring_sqe, io_mapped_region | io_register_free_rings | io_uring/register.c | function parameter
+| | | io_register_resize_rings | io_uring/register.c | local variable
+io_rsrc_update | io_uring/rsrc.c | file, u64, u32 | io_files_update_prep | io_uring/rsrc.c | local variable 
+| | | io_files_update_with_index_alloc | io_uring/rsrc.c | local variable 
+| | | io_files_update | io_uring/rsrc.c | local variable 
+io_rsrc_node | io_uring/rsrc.h | uchar, int, u63, union | io_rsrc_node_alloc | io_uring/rsrc.h | local variable
+| | | io_free_rsrc_node | io_uring/rsrc.h | function parameter 
+| | | io_find_buf_node | io_uring/rsrc.h | local variable
+| | | io_rsrc_node_lookup | io_uring/rsrc.h | local variable
+| | | io_put_rsrc_node | io_uring/rsrc.h | function parameter 
+| | | io_reset_rsrc_node | io_uring/rsrc.h | local variable
+| | | io_req_assign_rsrc_node| io_uring/rsrc.h | function parameter 
+| | | io_req_assign_buf_node | io_uring/rsrc.h | function parameter 
+| | | io_sqe_buffer_register | io_uring/rsrc.h | local variable
+| | | io_rsrc_node_alloc | io_uring/rsrc.h | local variable
+| | | io_rsrc_cache_init | io_uring/rsrc.h | function parameter 
+| | | io_rsrc_data_alloc | io_uring/rsrc.h | function parameter 
+| | | io_free_rsrc_node | io_uring/rsrc.h | function parameter 
+| | | io_sqe_files_register | io_uring/rsrc.h | local variable
+| | | headpage_already_acct | io_uring/rsrc.h | local variable
+| | | io_sqe_buffer_register | io_uring/rsrc.h | local variable
+| | | io_sqe_buffer_register | io_uring/rsrc.h | local variable
+| | | io_buffer_register_bvec | io_uring/rsrc.h | local variable
+| | | io_buffer_unregister_bvec | io_uring/rsrc.h | local variable
+| | | io_find_buf_node | io_uring/rsrc.h | local variable
+| | | io_import_reg_buf | io_uring/rsrc.h | local variable
+| | | io_import_reg_vec | io_uring/rsrc.h | local variable
+io_mapped_ubuf | io_uring/rsrc.h | u64, uint, refcount_t, ulong, void, bool, u8, bio_vec | io_release_ubuf | io_uring/rsrc.c | local variable
+| | | io_alloc_imu | io_uring/rsrc.c | local variable
+| | | io_free_imu | io_uring/rsrc.c | function parameter
+| | | io_buffer_unmap | io_uring/rsrc.c | function parameter
+| | | io_rsrc_cache_init | io_uring/rsrc.c | function parameter
+| | | headpage_already_acct | io_uring/rsrc.c | function parameter
+| | | io_buffer_account_pin | io_uring/rsrc.c | function parameter
+| | | io_sqe_buffer_register | io_uring/rsrc.c | local variable
+| | | io_buffer_register_bvec | io_uring/rsrc.c | local variable
+| | | validate_fixed_range | io_uring/rsrc.c | function parameter
+| | | io_import_fixed | io_uring/rsrc.c | function parameter
+| | | io_vec_fill_bvec | io_uring/rsrc.c | function parameter
+| | | io_estimate_bvec_size | io_uring/rsrc.c | function parameter
+| | | io_vec_fill_kern_bvec | io_uring/rsrc.c | function parameter
+| | | iov_kern_bvec_size | io_uring/rsrc.c | function parameter
+| | | io_kern_bvec_size | io_uring/rsrc.c | function parameter
+| | | io_import_reg_vec | io_uring/rsrc.c | local variable
+io_imu_folio_data | io_uring/rsrc.h | uint | io_check_coalesce_buffer | io_uring/rsrc.h | function parameter
+| | | io_coalesce_buffer | io_uring/rsrc.c | function parameter
+| | | io_check_coalesce_buffer | io_uring/rsrc.c | function parameter
+| | | o_sqe_buffer_register | io_uring/rsrc.c | local variable
+io_rw | io_uring/rw.c | kiocb, u64, u32, rwf_t | io_iov_compat_buffer_select_prep | io_uring/rw.c | function parameter
+| | | io_iov_buffer_select_prep | io_uring/rw.c | local variable
+| | | __io_import_rw_buffer | io_uring/rw.c | local variable
+| | | io_prep_rw_pi | io_uring/rw.c | function parameter
+| | | __io_prep_rw | io_uring/rw.c | local variable
+| | | io_init_rw_fixed | io_uring/rw.c | local variable
+| | | io_rw_import_reg_vec | io_uring/rw.c | local variable
+| | | io_rw_prep_reg_vec | io_uring/rw.c | local variable
+| | | io_read_mshot_prep | io_uring/rw.c | local variable
+| | | io_kiocb_update_pos | io_uring/rw.c | local variable
+| | | io_rw_should_reissue | io_uring/rw.c | local variable
+| | | io_req_end_write | io_uring/rw.c | local variable
+| | | io_req_io_end | io_uring/rw.c | local variable
+| | | io_req_rw_complete | io_uring/rw.c | local variable
+| | | io_complete_rw | io_uring/rw.c | local variable
+| | | io_complete_rw_iopoll | io_uring/rw.c | local variable
+| | | io_rw_done | io_uring/rw.c | local variable
+| | | kiocb_done | io_uring/rw.c | local variable
+| | | loop_rw_iter | io_uring/rw.c | function parameter
+| | | io_async_buf_func | io_uring/rw.c | local variable
+| | | io_rw_should_retry | io_uring/rw.c | local variable
+| | | io_iter_do_read | io_uring/rw.c | function parameter
+| | | io_rw_init_file | io_uring/rw.c | local variable
+| | | __io_read | io_uring/rw.c | local variable
+| | | io_read_mshot | io_uring/rw.c | local variable
+| | | io_write | io_uring/rw.c | local variable
+| | | io_uring_classic_poll| io_uring/rw.c | local variable
+io_meta_state | io_uring/rw.h | u32, iov_iter_state | io_uring_classic_poll | io_uring/rw.c | local variable
+io_async_rw | io_uring/rw.h | u32, iov_iter_state | io_uring_classic_poll | io_uring/rw.c | local variable
 
 If the following row value in a column is missing, assume the value is the same with the previous row in the same column. 
 Continue until all data structures documented properly.
