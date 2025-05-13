@@ -1,9 +1,8 @@
 # Task 3: Data Structure Investigation
-The objective of this task is to document all internal data structures defined in io_uring. 
+The objective of this task is to document all internal data structures defined in io_uring.
 
 Structure name | Defined in | Attributes | Caller Functions Source | source caller | usage
 ---------------|------------|------------|-------------------------|---------------|-------------------
-io_ev_fd | io_uring/eventfd.c | eventfd_ctx, uint, uint, refcount_t, atomic_t, 
 io_splice | io_uring/splice.c | file_out, off_out, off_in, len, splice_fd_in, flags, rsrc_node | __io_splice_prep | io_uring/splice.c | local variable
 | | | | io_splice_cleanup | io_uring/splice.c | local variable
 | | | | io_splice_get_file | io_uring/splice.c | local variable
@@ -23,7 +22,7 @@ io_sync | io_uring/sync.c | file, len, off, flags, mode | io_sfr_prep | io_uring
 | | | | io_fsync | io_uring/sync.c | local variable
 | | | | io_fallocate_prep | io_uring/sync.c | local variable
 | | | | io_fallocate | io_uring/sync.c | local variable
-io_tctx_node | io_uring/tctx.h | ctx_node, task, ctx | 
+io_tctx_node | io_uring/tctx.h | ctx_node, task, ctx |
 io_timeout | io_uring/timeout.c | file, off, target_seq, repeats, list, head, prev | io_is_timeout_noseq | io_uring/timeout.c | local variable
 | | | | io_timeout_finish | io_uring/timeout.c | function parameter
 | | | | io_timeout_complete | io_uring/timeout.c | local variable
@@ -35,7 +34,7 @@ io_timeout | io_uring/timeout.c | file, off, target_seq, repeats, list, head, pr
 | | | | io_timeout_extract | io_uring/timeout.c | local variable
 | | | | io_req_task_link_timeout | io_uring/timeout.c | local variable
 | | | | io_link_timeout_fn | io_uring/timeout.c | local variable
-| | | | io_linked_timeout_update | io_uring/timeout.c | local variable 
+| | | | io_linked_timeout_update | io_uring/timeout.c | local variable
 | | | | io_timeout_update | io_uring/timeout.c | local variable
 | | | | __io_timeout_prep | io_uring/timeout.c | local variable
 | | | | io_timeout | io_uring/timeout.c | local variable
@@ -49,9 +48,9 @@ io_timeout_data | io_uring/timeout.h | req, timer, ts, mode, flags | io_is_timeo
 | | | | io_kill_timeout | io_uring/timeout.c | local variable
 | | | | __io_disarm_linked_timeout | io_uring/timeout.c | local variable
 | | | | io_timeout_fn | io_uring/timeout.c | local variable
-| | | | io_timeout_extract | io_uring/timeout.c | local variable 
+| | | | io_timeout_extract | io_uring/timeout.c | local variable
 | | | | io_link_timeout_fn | io_uring/timeout.c | local variable
-| | | | io_timeout_get_clock | io_uring/timeout.c | function parameter 
+| | | | io_timeout_get_clock | io_uring/timeout.c | function parameter
 | | | | io_linked_timeout_update | io_uring/timeout.c | local variable
 | | | | io_timeout_update | io_uring/timeout.c | local variable
 | | | | __io_timeout_prep | io_uring/timeout.c | local variable
@@ -59,7 +58,7 @@ io_timeout_data | io_uring/timeout.h | req, timer, ts, mode, flags | io_is_timeo
 | | | | io_queue_linked_timeout | io_uring/timeout.c | local variable
 io_ftrunc | io_uring/truncate.c | file, len | io_ftruncate_prep | io_uring/truncate.c | local variable
 | | | | io_ftruncate | io_uring/truncate.c | local variable
-io_async_cmd | io_uring/uring_cmd.h | data, vec, sqes | 
+io_async_cmd | io_uring/uring_cmd.h | data, vec, sqes |
 io_waitid | io_uring/waitid.c | file, which, upid, options, refs, head, infop, info | io_waitid_compat_copy_si | io_uring/waitid.c | function parameter
 | | | | io_waitid_copy_si | io_uring/waitid.c | local variable
 | | | | io_waitid_complete | io_uring/waitid.c | local variable
@@ -105,5 +104,5 @@ io_zcrx_args | io_uring/zcrx.c | req, ifq, sock, nr_skbs | io_zcrx_recv_skb | io
  | | | | io_zcrx_alloc_fallback | io_uring/zcrx.c | function parameter
  | | | | io_zcrx_copy_chunk | io_uring/zcrx.c | local variable
 
-If the following row value in a column is missing, assume the value is the same with the previous row in the same column. 
+If the following row value in a column is missing, assume the value is the same with the previous row in the same column.
 Continue until all data structures documented properly.
