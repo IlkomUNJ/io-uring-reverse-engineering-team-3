@@ -53,10 +53,6 @@ io_ev_fd | io_uring/eventfd.c | eventfd_ctx, uint, uint, refcount_t, atomic_t, r
 | | | | io_eventfd_unregister | io_uring/eventfd.c | function parameter
 | | | | io_eventfd_release | io_uring/eventfd.c | function parameter
 | | | | io_eventfd_trigger | io_uring/eventfd.c | function parameter
-io_epoll | io_uring/epoll.c | file, int, int, int, epoll_event | io_epoll_ctl_prep | io_uring/epoll.c | local variable
-| | | | io_epoll_ctl | io_uring/epoll.c | local variable
-io_epoll_wait | io_uring/epoll.c | file, int, epoll_event | io_epoll_wait_prep | io_uring/epoll.c | local variable
-| | | | io_epoll_wait | io_uring/epoll.c | local variable
 io_rename | io_uring/fs.c | file, int, int, filename, filename, int | io_renameat_prep | io_uring/fs.c | local variable
 | | | | io_renameat | io_uring/fs.c | local variable
 | | | | io_renameat_cleanup | io_uring/fs.c | local variable
