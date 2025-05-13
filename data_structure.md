@@ -53,48 +53,6 @@ io_ev_fd | io_uring/eventfd.c | eventfd_ctx, uint, uint, refcount_t, atomic_t, r
 | | | | io_eventfd_unregister | io_uring/eventfd.c | function parameter
 | | | | io_eventfd_release | io_uring/eventfd.c | function parameter
 | | | | io_eventfd_trigger | io_uring/eventfd.c | function parameter
-io_fadvise | io_uring/advise.c | file, u64 offset, u64 len, u32 advice | io_fadvise_force_async | io_uring/advise.c | function parameter
-| | | | io_fadvise_prep | io_uring/advise.c | local variable
-| | | | io_fadvise | io_uring/advise.c | local variable
-io_madvise | io_uring/advise.c | file, u64 addr, u64 len, u32 advice | io_madvise_prep | io_uring/advise.c | local variable
-| | | | io_madvise | io_uring/advise.c | local variable
-io_cancel | io_uring/cancel.c | file, u64 addr, u32 flags, s32 f, u8 opcode | io_async_cancel_prep | io_uring/cancel.c | local variable
-| | | | io_async_cancel | io_uring/cancel.c | local variable
-io_cancel_data | io_uring/cancel.h | io_ring_ctx, u64 data, file, u8 opcode, u32 flags, int | io_try_cancel | io_uring/cancel.h | function parameter
-| | | | io_cancel_req_match | io_uring/cancel.h | function parameter
-| | | | io_cancel_remove | io_uring/cancel.h | function parameter
-| | | | io_cancel_req_match | io_uring/cancel.c | function parameter
-| | | | io_cancel_cb | io_uring/cancel.c | local variable
-| | | | io_async_cancel_one | io_uring/cancel.c | function parameter
-| | | | io_try_cancel | io_uring/cancel.c | function parameter
-| | | | __io_async_cancel | io_uring/cancel.c | function parameter
-| | | | io_async_cancel | io_uring/cancel.c | local variable
-| | | | __io_sync_cancel | io_uring/cancel.c | function parameter
-| | | | io_sync_cancel | io_uring/cancel.c | local variable
-| | | | io_cancel_remove | io_uring/cancel.c | function parameter
-| | | | io_futex_cancel | io_uring/futex.c | function parameter
-| | | | io_futex_cancel | io_uring/futex.h | function parameter
-| | | | io_poll_find | io_uring/poll.c | function parameter
-| | | | io_poll_file_find | io_uring/poll.c | function parameter
-| | | | __io_poll_cancel | io_uring/poll.c | function parameter
-| | | | io_poll_cancel | io_uring/poll.c | function parameter
-| | | | io_poll_remove | io_uring/poll.c | local variable
-| | | | io_poll_cancel | io_uring/poll.h | function parameter
-| | | | io_timeout_extract | io_uring/timeout.c | function parameter
-| | | | io_timeout_cancel | io_uring/timeout.c | function parameter
-| | | | io_req_task_link_timeout | io_uring/timeout.c | local variable
-| | | | io_link_timeout_fn | io_uring/timeout.c | local variable
-| | | | io_linked_timeout_update | io_uring/timeout.c | local variable 
-| | | | io_timeout_update | io_uring/timeout.c | local variable
-| | | | __io_timeout_prep | io_uring/timeout.c | local variable
-| | | | io_timeout | io_uring/timeout.c | local variable
-| | | | io_queue_linked_timeout | io_uring/timeout.c | local variable
-| | | | io_kill_timeouts | io_uring/timeout.c | local variable
-io_timeout_rem | io_uring/timeout.c | file, addr, ts, flags, ltimeout | io_timeout_remove_prep | io_uring/timeout.c | local variable
-| | | | io_timeout_remove | io_uring/timeout.c | local variable
-| | | | io_timeout_cancel | io_uring/timeout.h | function parameter
-| | | | io_waitid_cancel | io_uring/waitid.c | function parameter
-| | | | io_waitid_cancel | io_uring/waitid.h | function parameter
 io_epoll | io_uring/epoll.c | file, int, int, int, epoll_event | io_epoll_ctl_prep | io_uring/epoll.c | local variable
 | | | | io_epoll_ctl | io_uring/epoll.c | local variable
 io_epoll_wait | io_uring/epoll.c | file, int, epoll_event | io_epoll_wait_prep | io_uring/epoll.c | local variable
@@ -565,6 +523,9 @@ io_timeout | io_uring/timeout.c | file, off, target_seq, repeats, list, head, pr
 | | | | io_kill_timeouts | io_uring/timeout.c | local variable
 io_timeout_rem | io_uring/timeout.c | file, addr, ts, flags, ltimeout | io_timeout_remove_prep | io_uring/timeout.c | local variable
 | | | | io_timeout_remove | io_uring/timeout.c | local variable
+| | | | io_timeout_cancel | io_uring/timeout.h | function parameter
+| | | | io_waitid_cancel | io_uring/waitid.c | function parameter
+| | | | io_waitid_cancel | io_uring/waitid.h | function parameter
 io_timeout_data | io_uring/timeout.h | req, timer, ts, mode, flags | io_is_timeout_noseq | io_uring/timeout.c | local variable
 | | | | io_timeout_finish | io_uring/timeout.c | local variable
 | | | | io_timeout_complete | io_uring/timeout.c | local variable
@@ -609,23 +570,23 @@ io_xattr | io_uring/xattr.c | file, ctx, filename | io_xattr_cleanup | io_uring/
 | | | | io_setxattr | io_uring/xattr.c | local variable
 io_zcrx_args | io_uring/zcrx.c | req, ifq, sock, nr_skbs | io_zcrx_recv_skb | io_uring/zcrx.c | local variable
 | | | | io_zcrx_tcp_recvmsg | io_uring/zcrx.c | local variable
- io_zcrx_area | io_uring/zcrx.h | nia, ifq, user_refs, is_mapped, area_id, pages, nr_folios, freelist_lock, free_count, freelist | __io_zcrx_unmap_area | io_uring/zcrx.c | local variable
- | | | | io_zcrx_unmap_area | io_uring/zcrx.c | function parameter
- | | | | io_zcrx_map_area | io_uring/zcrx.c | function parameter
- | | | | io_zcrx_iov_to_area | io_uring/zcrx.c | return type
- | | | | io_get_user_counter | io_uring/zcrx.c | local variable
- | | | | io_zcrx_iov_page | io_uring/zcrx.c | local variable
- | | | | io_zcrx_free_area | io_uring/zcrx.c | function parameter
- | | | | io_zcrx_create_area | io_uring/zcrx.c | local variable
- | | | | __io_zcrx_get_free_niov | io_uring/zcrx.c | function parameter
- | | | | io_zcrx_return_niov_freelist | io_uring/zcrx.c | local variable
- | | | | io_zcrx_scrub | io_uring/zcrx.c | local variable
- | | | | io_zcrx_ring_refill | io_uring/zcrx.c | local variable
- | | | | io_zcrx_refill_slow | io_uring/zcrx.c | local variable
- | | | | io_pp_zc_destroy | io_uring/zcrx.c | local variable
- | | | | io_zcrx_queue_cqe | io_uring/zcrx.c | local variable
- | | | | io_zcrx_alloc_fallback | io_uring/zcrx.c | function parameter
- | | | | io_zcrx_copy_chunk | io_uring/zcrx.c | local variable
+io_zcrx_area | io_uring/zcrx.h | nia, ifq, user_refs, is_mapped, area_id, pages, nr_folios, freelist_lock, free_count, freelist | __io_zcrx_unmap_area | io_uring/zcrx.c | local variable
+| | | | io_zcrx_unmap_area | io_uring/zcrx.c | function parameter
+| | | | io_zcrx_map_area | io_uring/zcrx.c | function parameter
+| | | | io_zcrx_iov_to_area | io_uring/zcrx.c | return type
+| | | | io_get_user_counter | io_uring/zcrx.c | local variable
+| | | | io_zcrx_iov_page | io_uring/zcrx.c | local variable
+| | | | io_zcrx_free_area | io_uring/zcrx.c | function parameter
+| | | | io_zcrx_create_area | io_uring/zcrx.c | local variable
+| | | | __io_zcrx_get_free_niov | io_uring/zcrx.c | function parameter
+| | | | io_zcrx_return_niov_freelist | io_uring/zcrx.c | local variable
+| | | | io_zcrx_scrub | io_uring/zcrx.c | local variable
+| | | | io_zcrx_ring_refill | io_uring/zcrx.c | local variable
+| | | | io_zcrx_refill_slow | io_uring/zcrx.c | local variable
+| | | | io_pp_zc_destroy | io_uring/zcrx.c | local variable
+| | | | io_zcrx_queue_cqe | io_uring/zcrx.c | local variable
+| | | | io_zcrx_alloc_fallback | io_uring/zcrx.c | function parameter
+| | | | io_zcrx_copy_chunk | io_uring/zcrx.c | local variable
 
 If the following row value in a column is missing, assume the value is the same with the previous row in the same column.
 Continue until all data structures documented properly.
