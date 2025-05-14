@@ -20,6 +20,12 @@ struct io_ftrunc {
 	loff_t				len;
 };
 
+/**
+ * Prepares an io_ftruncate operation by setting up the io_ftrunc structure.
+ * Validates input fields and sets request flags.
+ * 
+ * Returns 0 on success or -EINVAL on invalid input.
+ */
 int io_ftruncate_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_ftrunc *ft = io_kiocb_to_cmd(req, struct io_ftrunc);
@@ -34,6 +40,11 @@ int io_ftruncate_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/**
+ * Executes an io_ftruncate operation to truncate or extend a file to a specified length.
+ * 
+ * Returns IOU_OK after setting the result in the request.
+ */
 int io_ftruncate(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_ftrunc *ft = io_kiocb_to_cmd(req, struct io_ftrunc);

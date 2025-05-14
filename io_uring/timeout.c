@@ -119,6 +119,9 @@ static void io_kill_timeout(struct io_kiocb *req, struct list_head *list)
 	}
 }
 
+/**
+ * Flushes all timeouts in the timeout list.
+ */
 __cold void io_flush_timeouts(struct io_ring_ctx *ctx)
 {
 	struct io_timeout *timeout, *tmp;
@@ -297,6 +300,11 @@ static struct io_kiocb *io_timeout_extract(struct io_ring_ctx *ctx,
 	return req;
 }
 
+/**
+ * Cancels a timeout operation by removing it from the timeout list.
+ * 
+ * Returns 0 on success or a negative error code on failure.
+ */
 int io_timeout_cancel(struct io_ring_ctx *ctx, struct io_cancel_data *cd)
 	__must_hold(&ctx->completion_lock)
 {
@@ -471,8 +479,10 @@ static inline enum hrtimer_mode io_translate_timeout_mode(unsigned int flags)
 					    : HRTIMER_MODE_REL;
 }
 
-/*
- * Remove or update an existing timeout command
+/**
+ * Removes or updates an existing timeout operation.
+ * 
+ * Returns IOU_OK on success or sets the request to fail on error.
  */
 int io_timeout_remove(struct io_kiocb *req, unsigned int issue_flags)
 {
@@ -573,16 +583,33 @@ static int __io_timeout_prep(struct io_kiocb *req,
 	return 0;
 }
 
+/**
+ * Prepares a timeout operation by setting up the io_timeout structure.
+ * Validates input fields and initializes the timer.
+ * 
+ * Returns 0 on success or a negative error code on failure.
+ */
 int io_timeout_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	return __io_timeout_prep(req, sqe, false);
 }
 
+/**
+ * Prepares a linked timeout operation by setting up the io_timeout structure.
+ * Validates input fields and initializes the timer.
+ * 
+ * Returns 0 on success or a negative error code on failure.
+ */
 int io_link_timeout_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	return __io_timeout_prep(req, sqe, true);
 }
 
+/**
+ * Executes a timeout operation by starting the timer and adding it to the timeout list.
+ * 
+ * Returns IOU_ISSUE_SKIP_COMPLETE to indicate the request is handled asynchronously.
+ */
 int io_timeout(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_timeout *timeout = io_kiocb_to_cmd(req, struct io_timeout);
@@ -633,6 +660,9 @@ add:
 	return IOU_ISSUE_SKIP_COMPLETE;
 }
 
+/**
+ * Queues a linked timeout operation by starting the timer and adding it to the linked timeout list.
+ */
 void io_queue_linked_timeout(struct io_kiocb *req)
 {
 	struct io_timeout *timeout = io_kiocb_to_cmd(req, struct io_timeout);

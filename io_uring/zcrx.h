@@ -39,27 +39,28 @@ struct io_zcrx_ifq {
 	spinlock_t			lock;
 };
 
+// Registers a zero-copy receive interface queue for io_uring.
 #if defined(CONFIG_IO_URING_ZCRX)
-int io_register_zcrx_ifq(struct io_ring_ctx *ctx,
+int io_register_zcrx_ifq(struct io_ring_ctx *ctx, 
 			 struct io_uring_zcrx_ifq_reg __user *arg);
-void io_unregister_zcrx_ifqs(struct io_ring_ctx *ctx);
-void io_shutdown_zcrx_ifqs(struct io_ring_ctx *ctx);
-int io_zcrx_recv(struct io_kiocb *req, struct io_zcrx_ifq *ifq,
+void io_unregister_zcrx_ifqs(struct io_ring_ctx *ctx); // Unregisters all zero-copy receive interface queues for io_uring.
+void io_shutdown_zcrx_ifqs(struct io_ring_ctx *ctx); // Shuts down all zero-copy receive interface queues for io_uring.
+int io_zcrx_recv(struct io_kiocb *req, struct io_zcrx_ifq *ifq, // Handles zero-copy receive for TCP sockets.
 		 struct socket *sock, unsigned int flags,
 		 unsigned issue_flags, unsigned int *len);
 #else
-static inline int io_register_zcrx_ifq(struct io_ring_ctx *ctx,
+static inline int io_register_zcrx_ifq(struct io_ring_ctx *ctx, // Fallback for unsupported zero-copy receive interface queue registration.
 					struct io_uring_zcrx_ifq_reg __user *arg)
 {
 	return -EOPNOTSUPP;
 }
-static inline void io_unregister_zcrx_ifqs(struct io_ring_ctx *ctx)
+static inline void io_unregister_zcrx_ifqs(struct io_ring_ctx *ctx) // Fallback for unsupported zero-copy receive interface queue unregistration.
 {
 }
-static inline void io_shutdown_zcrx_ifqs(struct io_ring_ctx *ctx)
+static inline void io_shutdown_zcrx_ifqs(struct io_ring_ctx *ctx) // Fallback for unsupported zero-copy receive interface queue shutdown.
 {
 }
-static inline int io_zcrx_recv(struct io_kiocb *req, struct io_zcrx_ifq *ifq,
+static inline int io_zcrx_recv(struct io_kiocb *req, struct io_zcrx_ifq *ifq, // Fallback for unsupported zero-copy receive handling.
 			       struct socket *sock, unsigned int flags,
 			       unsigned issue_flags, unsigned int *len)
 {
@@ -67,7 +68,7 @@ static inline int io_zcrx_recv(struct io_kiocb *req, struct io_zcrx_ifq *ifq,
 }
 #endif
 
-int io_recvzc(struct io_kiocb *req, unsigned int issue_flags);
-int io_recvzc_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);
+int io_recvzc(struct io_kiocb *req, unsigned int issue_flags); // Prepares a zero-copy receive operation.
+int io_recvzc_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe); // Executes a zero-copy receive operation.
 
 #endif
