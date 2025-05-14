@@ -35,6 +35,9 @@
 #define IORING_MAX_RESTRICTIONS	(IORING_RESTRICTION_LAST + \
 				 IORING_REGISTER_LAST + IORING_OP_LAST)
 
+/**
+ * Probes the io_uring operations supported by the kernel and returns the result to the user.
+ */
 static __cold int io_probe(struct io_ring_ctx *ctx, void __user *arg,
 			   unsigned nr_args)
 {
@@ -74,6 +77,9 @@ out:
 	return ret;
 }
 
+/**
+ * Unregisters a personality from the io_uring context.
+ */
 int io_unregister_personality(struct io_ring_ctx *ctx, unsigned id)
 {
 	const struct cred *creds;
@@ -87,7 +93,9 @@ int io_unregister_personality(struct io_ring_ctx *ctx, unsigned id)
 	return -EINVAL;
 }
 
-
+/**
+ * Registers a personality for the io_uring context.
+ */
 static int io_register_personality(struct io_ring_ctx *ctx)
 {
 	const struct cred *creds;
@@ -105,6 +113,9 @@ static int io_register_personality(struct io_ring_ctx *ctx)
 	return id;
 }
 
+/**
+ * Parses restrictions for io_uring operations from user input.
+ */
 static __cold int io_parse_restrictions(void __user *arg, unsigned int nr_args,
 					struct io_restriction *restrictions)
 {
@@ -155,6 +166,9 @@ err:
 	return ret;
 }
 
+/**
+ * Registers restrictions for io_uring operations.
+ */
 static __cold int io_register_restrictions(struct io_ring_ctx *ctx,
 					   void __user *arg, unsigned int nr_args)
 {
@@ -177,6 +191,9 @@ static __cold int io_register_restrictions(struct io_ring_ctx *ctx,
 	return ret;
 }
 
+/**
+ * Enables io_uring rings that were initially disabled.
+ */
 static int io_register_enable_rings(struct io_ring_ctx *ctx)
 {
 	if (!(ctx->flags & IORING_SETUP_R_DISABLED))
@@ -217,6 +234,9 @@ static __cold int __io_register_iowq_aff(struct io_ring_ctx *ctx,
 	return ret;
 }
 
+/**
+ * Sets the CPU affinity for the io_uring workqueue.
+ */
 static __cold int io_register_iowq_aff(struct io_ring_ctx *ctx,
 				       void __user *arg, unsigned len)
 {
@@ -249,11 +269,17 @@ static __cold int io_register_iowq_aff(struct io_ring_ctx *ctx,
 	return ret;
 }
 
+/**
+ * Unregisters the CPU affinity for the io_uring workqueue.
+ */
 static __cold int io_unregister_iowq_aff(struct io_ring_ctx *ctx)
 {
 	return __io_register_iowq_aff(ctx, NULL);
 }
 
+/**
+ * Sets the maximum number of workers for the io_uring workqueue.
+ */
 static __cold int io_register_iowq_max_workers(struct io_ring_ctx *ctx,
 					       void __user *arg)
 	__must_hold(&ctx->uring_lock)
@@ -340,6 +366,9 @@ err:
 	return ret;
 }
 
+/**
+ * Registers a clock for the io_uring context.
+ */
 static int io_register_clock(struct io_ring_ctx *ctx,
 			     struct io_uring_clock_register __user *arg)
 {
@@ -377,6 +406,9 @@ struct io_ring_ctx_rings {
 	struct io_mapped_region ring_region;
 };
 
+/**
+ * Frees the io_uring rings during a resize operation.
+ */
 static void io_register_free_rings(struct io_ring_ctx *ctx,
 				   struct io_uring_params *p,
 				   struct io_ring_ctx_rings *r)
@@ -395,6 +427,9 @@ static void io_register_free_rings(struct io_ring_ctx *ctx,
 #define COPY_FLAGS	(IORING_SETUP_NO_SQARRAY | IORING_SETUP_SQE128 | \
 			 IORING_SETUP_CQE32 | IORING_SETUP_NO_MMAP)
 
+/**
+ * Resizes the io_uring rings.
+ */
 static int io_register_resize_rings(struct io_ring_ctx *ctx, void __user *arg)
 {
 	struct io_uring_region_desc rd;
@@ -581,6 +616,9 @@ out:
 	return ret;
 }
 
+/**
+ * Registers a memory region for the io_uring context.
+ */
 static int io_register_mem_region(struct io_ring_ctx *ctx, void __user *uarg)
 {
 	struct io_uring_mem_region_reg __user *reg_uptr = uarg;
@@ -626,6 +664,9 @@ static int io_register_mem_region(struct io_ring_ctx *ctx, void __user *uarg)
 	return 0;
 }
 
+/**
+ * Handles the main logic for the io_uring_register syscall.
+ */
 static int __io_uring_register(struct io_ring_ctx *ctx, unsigned opcode,
 			       void __user *arg, unsigned nr_args)
 	__releases(ctx->uring_lock)
@@ -900,6 +941,9 @@ static int io_uring_register_blind(unsigned int opcode, void __user *arg,
 	return -EINVAL;
 }
 
+/**
+ * Implements the io_uring_register syscall.
+ */
 SYSCALL_DEFINE4(io_uring_register, unsigned int, fd, unsigned int, opcode,
 		void __user *, arg, unsigned int, nr_args)
 {
