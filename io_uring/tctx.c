@@ -12,6 +12,10 @@
 #include "io_uring.h"
 #include "tctx.h"
 
+/**
+ * Initializes the workqueue for offloading tasks in io_uring.
+ * Returns a pointer to the workqueue or an error pointer on failure.
+ */
 static struct io_wq *io_init_wq_offload(struct io_ring_ctx *ctx,
 					struct task_struct *task)
 {
@@ -44,6 +48,9 @@ static struct io_wq *io_init_wq_offload(struct io_ring_ctx *ctx,
 	return io_wq_create(concurrency, &data);
 }
 
+/**
+ * Frees the io_uring task context for a given task.
+ */
 void __io_uring_free(struct task_struct *tsk)
 {
 	struct io_uring_task *tctx = tsk->io_uring;
@@ -68,6 +75,10 @@ void __io_uring_free(struct task_struct *tsk)
 	tsk->io_uring = NULL;
 }
 
+/**
+ * Allocates and initializes the io_uring task context for a task.
+ * Returns 0 on success or a negative error code on failure.
+ */
 __cold int io_uring_alloc_task_context(struct task_struct *task,
 				       struct io_ring_ctx *ctx)
 {
@@ -103,6 +114,10 @@ __cold int io_uring_alloc_task_context(struct task_struct *task,
 	return 0;
 }
 
+/**
+ * Adds a task context node to the io_uring context.
+ * Returns 0 on success or a negative error code on failure.
+ */
 int __io_uring_add_tctx_node(struct io_ring_ctx *ctx)
 {
 	struct io_uring_task *tctx = current->io_uring;
@@ -187,6 +202,9 @@ __cold void io_uring_del_tctx_node(unsigned long index)
 	kfree(node);
 }
 
+/**
+ * Cleans up all task context nodes and workqueues for the io_uring task.
+ */
 __cold void io_uring_clean_tctx(struct io_uring_task *tctx)
 {
 	struct io_wq *wq = tctx->io_wq;
@@ -321,6 +339,10 @@ int io_ringfd_register(struct io_ring_ctx *ctx, void __user *__arg,
 	return i ? i : ret;
 }
 
+/**
+ * Unregisters ring file descriptors for io_uring.
+ * Returns the number of entries processed or a negative error code on failure.
+ */
 int io_ringfd_unregister(struct io_ring_ctx *ctx, void __user *__arg,
 			 unsigned nr_args)
 {
