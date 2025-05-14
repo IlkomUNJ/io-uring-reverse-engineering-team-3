@@ -16,37 +16,41 @@
 #include "fs.h"
 
 struct io_rename {
-	struct file			*file;
-	int				old_dfd;
-	int				new_dfd;
-	struct filename			*oldpath;
-	struct filename			*newpath;
-	int				flags;
+    struct file			*file;
+    int				old_dfd;
+    int				new_dfd;
+    struct filename			*oldpath;
+    struct filename			*newpath;
+    int				flags;
 };
 
 struct io_unlink {
-	struct file			*file;
-	int				dfd;
-	int				flags;
-	struct filename			*filename;
+    struct file			*file;
+    int				dfd;
+    int				flags;
+    struct filename			*filename;
 };
 
 struct io_mkdir {
-	struct file			*file;
-	int				dfd;
-	umode_t				mode;
-	struct filename			*filename;
+    struct file			*file;
+    int				dfd;
+    umode_t				mode;
+    struct filename			*filename;
 };
 
 struct io_link {
-	struct file			*file;
-	int				old_dfd;
-	int				new_dfd;
-	struct filename			*oldpath;
-	struct filename			*newpath;
-	int				flags;
+    struct file			*file;
+    int				old_dfd;
+    int				new_dfd;
+    struct filename			*oldpath;
+    struct filename			*newpath;
+    int				flags;
 };
 
+/**
+ * Prepares the rename operation by extracting and validating parameters
+ * from the submission queue entry (SQE).
+ */
 int io_renameat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_rename *ren = io_kiocb_to_cmd(req, struct io_rename);
@@ -78,6 +82,9 @@ int io_renameat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/**
+ * Executes the rename operation using the prepared parameters.
+ */
 int io_renameat(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_rename *ren = io_kiocb_to_cmd(req, struct io_rename);
@@ -93,6 +100,9 @@ int io_renameat(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+/**
+ * Cleans up resources allocated during the rename operation.
+ */
 void io_renameat_cleanup(struct io_kiocb *req)
 {
 	struct io_rename *ren = io_kiocb_to_cmd(req, struct io_rename);
@@ -101,6 +111,10 @@ void io_renameat_cleanup(struct io_kiocb *req)
 	putname(ren->newpath);
 }
 
+/**
+ * Prepares the unlink operation by extracting and validating parameters
+ * from the submission queue entry (SQE).
+ */
 int io_unlinkat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_unlink *un = io_kiocb_to_cmd(req, struct io_unlink);
@@ -127,6 +141,9 @@ int io_unlinkat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/**
+ * Executes the unlink operation using the prepared parameters.
+ */
 int io_unlinkat(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_unlink *un = io_kiocb_to_cmd(req, struct io_unlink);
@@ -144,6 +161,9 @@ int io_unlinkat(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+/**
+ * Cleans up resources allocated during the unlink operation.
+ */
 void io_unlinkat_cleanup(struct io_kiocb *req)
 {
 	struct io_unlink *ul = io_kiocb_to_cmd(req, struct io_unlink);
@@ -151,6 +171,10 @@ void io_unlinkat_cleanup(struct io_kiocb *req)
 	putname(ul->filename);
 }
 
+/**
+ * Prepares the mkdir operation by extracting and validating parameters
+ * from the submission queue entry (SQE).
+ */
 int io_mkdirat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_mkdir *mkd = io_kiocb_to_cmd(req, struct io_mkdir);
@@ -174,6 +198,9 @@ int io_mkdirat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/**
+ * Executes the mkdir operation using the prepared parameters.
+ */
 int io_mkdirat(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_mkdir *mkd = io_kiocb_to_cmd(req, struct io_mkdir);
@@ -188,6 +215,9 @@ int io_mkdirat(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+/**
+ * Cleans up resources allocated during the mkdir operation.
+ */
 void io_mkdirat_cleanup(struct io_kiocb *req)
 {
 	struct io_mkdir *md = io_kiocb_to_cmd(req, struct io_mkdir);
@@ -195,6 +225,10 @@ void io_mkdirat_cleanup(struct io_kiocb *req)
 	putname(md->filename);
 }
 
+/**
+ * Prepares the symlink operation by extracting and validating parameters
+ * from the submission queue entry (SQE).
+ */
 int io_symlinkat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_link *sl = io_kiocb_to_cmd(req, struct io_link);
@@ -224,6 +258,9 @@ int io_symlinkat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/**
+ * Executes the symlink operation using the prepared parameters.
+ */
 int io_symlinkat(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_link *sl = io_kiocb_to_cmd(req, struct io_link);
@@ -238,6 +275,10 @@ int io_symlinkat(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+/**
+ * Prepares the link operation by extracting and validating parameters
+ * from the submission queue entry (SQE).
+ */
 int io_linkat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_link *lnk = io_kiocb_to_cmd(req, struct io_link);
@@ -269,6 +310,9 @@ int io_linkat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/**
+ * Executes the link operation using the prepared parameters.
+ */
 int io_linkat(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_link *lnk = io_kiocb_to_cmd(req, struct io_link);
@@ -284,6 +328,9 @@ int io_linkat(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+/**
+ * Cleans up resources allocated during the link operation.
+ */
 void io_link_cleanup(struct io_kiocb *req)
 {
 	struct io_link *sl = io_kiocb_to_cmd(req, struct io_link);

@@ -32,151 +32,174 @@ struct io_provide_buf {
 	__u16				bid;
 };
 
+/**
+ * Increments the commit position in the buffer list by the specified length.
+ * Updates the buffer's address and length, and advances the head of the list.
+ * Returns true if all buffers are fully consumed, false otherwise.
+ */
 static bool io_kbuf_inc_commit(struct io_buffer_list *bl, int len)
 {
-	while (len) {
-		struct io_uring_buf *buf;
-		u32 this_len;
+    while (len) {
+        struct io_uring_buf *buf;
+        u32 this_len;
 
-		buf = io_ring_head_to_buf(bl->buf_ring, bl->head, bl->mask);
-		this_len = min_t(int, len, buf->len);
-		buf->len -= this_len;
-		if (buf->len) {
-			buf->addr += this_len;
-			return false;
-		}
-		bl->head++;
-		len -= this_len;
-	}
-	return true;
+        buf = io_ring_head_to_buf(bl->buf_ring, bl->head, bl->mask);
+        this_len = min_t(int, len, buf->len);
+        buf->len -= this_len;
+        if (buf->len) {
+            buf->addr += this_len;
+            return false;
+        }
+        bl->head++;
+        len -= this_len;
+    }
+    return true;
 }
 
-bool io_kbuf_commit(struct io_kiocb *req,
-		    struct io_buffer_list *bl, int len, int nr)
+/**
+ * Commits the buffer usage for the specified request and buffer list.
+ * Updates the buffer list's head and handles incremental or full commits.
+ */
+bool io_kbuf_commit(struct io_kiocb *req, struct io_buffer_list *bl, int len, int nr)
 {
-	if (unlikely(!(req->flags & REQ_F_BUFFERS_COMMIT)))
-		return true;
+    if (unlikely(!(req->flags & REQ_F_BUFFERS_COMMIT)))
+        return true;
 
-	req->flags &= ~REQ_F_BUFFERS_COMMIT;
+    req->flags &= ~REQ_F_BUFFERS_COMMIT;
 
-	if (unlikely(len < 0))
-		return true;
-	if (bl->flags & IOBL_INC)
-		return io_kbuf_inc_commit(bl, len);
-	bl->head += nr;
-	return true;
+    if (unlikely(len < 0))
+        return true;
+    if (bl->flags & IOBL_INC)
+        return io_kbuf_inc_commit(bl, len);
+    bl->head += nr;
+    return true;
 }
 
-static inline struct io_buffer_list *io_buffer_get_list(struct io_ring_ctx *ctx,
-							unsigned int bgid)
+/**
+ * Retrieves the buffer list associated with the given buffer group ID (bgid).
+ * Ensures that the uring_lock is held during the lookup.
+ */
+static inline struct io_buffer_list *io_buffer_get_list(struct io_ring_ctx *ctx, unsigned int bgid)
 {
-	lockdep_assert_held(&ctx->uring_lock);
-
-	return xa_load(&ctx->io_bl_xa, bgid);
+    lockdep_assert_held(&ctx->uring_lock);
+    return xa_load(&ctx->io_bl_xa, bgid);
 }
 
-static int io_buffer_add_list(struct io_ring_ctx *ctx,
-			      struct io_buffer_list *bl, unsigned int bgid)
+/**
+ * Adds a buffer list to the io_uring context under the specified buffer group ID (bgid).
+ * Marks the list as visible and stores it in the context's buffer list array.
+ */
+static int io_buffer_add_list(struct io_ring_ctx *ctx, struct io_buffer_list *bl, unsigned int bgid)
 {
-	/*
-	 * Store buffer group ID and finally mark the list as visible.
-	 * The normal lookup doesn't care about the visibility as we're
-	 * always under the ->uring_lock, but lookups from mmap do.
-	 */
-	bl->bgid = bgid;
-	guard(mutex)(&ctx->mmap_lock);
-	return xa_err(xa_store(&ctx->io_bl_xa, bgid, bl, GFP_KERNEL));
+    bl->bgid = bgid;
+    guard(mutex)(&ctx->mmap_lock);
+    return xa_err(xa_store(&ctx->io_bl_xa, bgid, bl, GFP_KERNEL));
 }
 
+/**
+ * Drops a legacy buffer associated with the given request.
+ * Frees the buffer and clears the associated flags in the request.
+ */
 void io_kbuf_drop_legacy(struct io_kiocb *req)
 {
-	if (WARN_ON_ONCE(!(req->flags & REQ_F_BUFFER_SELECTED)))
-		return;
-	req->buf_index = req->kbuf->bgid;
-	req->flags &= ~REQ_F_BUFFER_SELECTED;
-	kfree(req->kbuf);
-	req->kbuf = NULL;
+    if (WARN_ON_ONCE(!(req->flags & REQ_F_BUFFER_SELECTED)))
+        return;
+    req->buf_index = req->kbuf->bgid;
+    req->flags &= ~REQ_F_BUFFER_SELECTED;
+    kfree(req->kbuf);
+    req->kbuf = NULL;
 }
 
+/**
+ * Recycles a legacy buffer for reuse in the io_uring context.
+ * Adds the buffer back to the buffer list and clears the associated flags.
+ */
 bool io_kbuf_recycle_legacy(struct io_kiocb *req, unsigned issue_flags)
 {
-	struct io_ring_ctx *ctx = req->ctx;
-	struct io_buffer_list *bl;
-	struct io_buffer *buf;
+    struct io_ring_ctx *ctx = req->ctx;
+    struct io_buffer_list *bl;
+    struct io_buffer *buf;
 
-	io_ring_submit_lock(ctx, issue_flags);
+    io_ring_submit_lock(ctx, issue_flags);
 
-	buf = req->kbuf;
-	bl = io_buffer_get_list(ctx, buf->bgid);
-	list_add(&buf->list, &bl->buf_list);
-	req->flags &= ~REQ_F_BUFFER_SELECTED;
-	req->buf_index = buf->bgid;
+    buf = req->kbuf;
+    bl = io_buffer_get_list(ctx, buf->bgid);
+    list_add(&buf->list, &bl->buf_list);
+    req->flags &= ~REQ_F_BUFFER_SELECTED;
+    req->buf_index = buf->bgid;
 
-	io_ring_submit_unlock(ctx, issue_flags);
-	return true;
+    io_ring_submit_unlock(ctx, issue_flags);
+    return true;
 }
 
-static void __user *io_provided_buffer_select(struct io_kiocb *req, size_t *len,
-					      struct io_buffer_list *bl)
+/**
+ * Selects a provided buffer from the buffer list for the given request.
+ * Updates the request with the selected buffer's address, length, and ID.
+ */
+static void __user *io_provided_buffer_select(struct io_kiocb *req, size_t *len, struct io_buffer_list *bl)
 {
-	if (!list_empty(&bl->buf_list)) {
-		struct io_buffer *kbuf;
+    if (!list_empty(&bl->buf_list)) {
+        struct io_buffer *kbuf;
 
-		kbuf = list_first_entry(&bl->buf_list, struct io_buffer, list);
-		list_del(&kbuf->list);
-		if (*len == 0 || *len > kbuf->len)
-			*len = kbuf->len;
-		if (list_empty(&bl->buf_list))
-			req->flags |= REQ_F_BL_EMPTY;
-		req->flags |= REQ_F_BUFFER_SELECTED;
-		req->kbuf = kbuf;
-		req->buf_index = kbuf->bid;
-		return u64_to_user_ptr(kbuf->addr);
-	}
-	return NULL;
+        kbuf = list_first_entry(&bl->buf_list, struct io_buffer, list);
+        list_del(&kbuf->list);
+        if (*len == 0 || *len > kbuf->len)
+            *len = kbuf->len;
+        if (list_empty(&bl->buf_list))
+            req->flags |= REQ_F_BL_EMPTY;
+        req->flags |= REQ_F_BUFFER_SELECTED;
+        req->kbuf = kbuf;
+        req->buf_index = kbuf->bid;
+        return u64_to_user_ptr(kbuf->addr);
+    }
+    return NULL;
 }
 
-static int io_provided_buffers_select(struct io_kiocb *req, size_t *len,
-				      struct io_buffer_list *bl,
-				      struct iovec *iov)
+/**
+ * Selects a buffer from the buffer list and prepares an iovec structure.
+ * Returns the number of iovec entries prepared or an error code.
+ */
+static int io_provided_buffers_select(struct io_kiocb *req, size_t *len, struct io_buffer_list *bl, struct iovec *iov)
 {
-	void __user *buf;
+    void __user *buf;
 
-	buf = io_provided_buffer_select(req, len, bl);
-	if (unlikely(!buf))
-		return -ENOBUFS;
+    buf = io_provided_buffer_select(req, len, bl);
+    if (unlikely(!buf))
+        return -ENOBUFS;
 
-	iov[0].iov_base = buf;
-	iov[0].iov_len = *len;
-	return 1;
+    iov[0].iov_base = buf;
+    iov[0].iov_len = *len;
+    return 1;
 }
 
-static void __user *io_ring_buffer_select(struct io_kiocb *req, size_t *len,
-					  struct io_buffer_list *bl,
-					  unsigned int issue_flags)
+/**
+ * Selects a buffer from a mapped buffer ring for the given request.
+ * Updates the request with the selected buffer's address, length, and ID.
+ */
+static void __user *io_ring_buffer_select(struct io_kiocb *req, size_t *len, struct io_buffer_list *bl, unsigned int issue_flags)
 {
-	struct io_uring_buf_ring *br = bl->buf_ring;
-	__u16 tail, head = bl->head;
-	struct io_uring_buf *buf;
-	void __user *ret;
+    struct io_uring_buf_ring *br = bl->buf_ring;
+    __u16 tail, head = bl->head;
+    struct io_uring_buf *buf;
+    void __user *ret;
 
-	tail = smp_load_acquire(&br->tail);
-	if (unlikely(tail == head))
-		return NULL;
+    tail = smp_load_acquire(&br->tail);
+    if (unlikely(tail == head))
+        return NULL;
 
-	if (head + 1 == tail)
-		req->flags |= REQ_F_BL_EMPTY;
+    if (head + 1 == tail)
+        req->flags |= REQ_F_BL_EMPTY;
 
-	buf = io_ring_head_to_buf(br, head, bl->mask);
-	if (*len == 0 || *len > buf->len)
-		*len = buf->len;
-	req->flags |= REQ_F_BUFFER_RING | REQ_F_BUFFERS_COMMIT;
-	req->buf_list = bl;
-	req->buf_index = buf->bid;
-	ret = u64_to_user_ptr(buf->addr);
+    buf = io_ring_head_to_buf(br, head, bl->mask);
+    if (*len == 0 || *len > buf->len)
+        *len = buf->len;
+    req->flags |= REQ_F_BUFFER_RING | REQ_F_BUFFERS_COMMIT;
+    req->buf_list = bl;
+    req->buf_index = buf->bid;
+    ret = u64_to_user_ptr(buf->addr);
 
-	if (issue_flags & IO_URING_F_UNLOCKED || !io_file_can_poll(req)) {
-		/*
+    if (issue_flags & IO_URING_F_UNLOCKED || !io_file_can_poll(req)) {
+/*
 		 * If we came in unlocked, we have no choice but to consume the
 		 * buffer here, otherwise nothing ensures that the buffer won't
 		 * get used by others. This does mean it'll be pinned until the
@@ -186,343 +209,446 @@ static void __user *io_ring_buffer_select(struct io_kiocb *req, size_t *len,
 		 * the transfer completes (or if we get -EAGAIN and must poll of
 		 * retry).
 		 */
-		io_kbuf_commit(req, bl, *len, 1);
-		req->buf_list = NULL;
-	}
-	return ret;
+        io_kbuf_commit(req, bl, *len, 1);
+        req->buf_list = NULL;
+    }
+    return ret;
 }
 
-void __user *io_buffer_select(struct io_kiocb *req, size_t *len,
-			      unsigned int issue_flags)
+/**
+ * Selects a buffer for the given request based on the buffer group ID.
+ * Handles both provided buffers and mapped buffer rings.
+ */
+void __user *io_buffer_select(struct io_kiocb *req, size_t *len, unsigned int issue_flags)
 {
-	struct io_ring_ctx *ctx = req->ctx;
-	struct io_buffer_list *bl;
-	void __user *ret = NULL;
+    struct io_ring_ctx *ctx = req->ctx;
+    struct io_buffer_list *bl;
+    void __user *ret = NULL;
 
-	io_ring_submit_lock(req->ctx, issue_flags);
+    io_ring_submit_lock(req->ctx, issue_flags);
 
-	bl = io_buffer_get_list(ctx, req->buf_index);
-	if (likely(bl)) {
-		if (bl->flags & IOBL_BUF_RING)
-			ret = io_ring_buffer_select(req, len, bl, issue_flags);
-		else
-			ret = io_provided_buffer_select(req, len, bl);
-	}
-	io_ring_submit_unlock(req->ctx, issue_flags);
-	return ret;
+    bl = io_buffer_get_list(ctx, req->buf_index);
+    if (likely(bl)) {
+        if (bl->flags & IOBL_BUF_RING)
+            ret = io_ring_buffer_select(req, len, bl, issue_flags);
+        else
+            ret = io_provided_buffer_select(req, len, bl);
+    }
+    io_ring_submit_unlock(req->ctx, issue_flags);
+    return ret;
 }
 
 /* cap it at a reasonable 256, will be one page even for 4K */
 #define PEEK_MAX_IMPORT		256
 
-static int io_ring_buffers_peek(struct io_kiocb *req, struct buf_sel_arg *arg,
-				struct io_buffer_list *bl)
+/**
+ * Peeks into the buffer ring to retrieve available buffers.
+ * Prepares an iovec array with the selected buffers.
+ */
+static int io_ring_buffers_peek(struct io_kiocb *req, struct buf_sel_arg *arg, struct io_buffer_list *bl)
 {
-	struct io_uring_buf_ring *br = bl->buf_ring;
-	struct iovec *iov = arg->iovs;
-	int nr_iovs = arg->nr_iovs;
-	__u16 nr_avail, tail, head;
-	struct io_uring_buf *buf;
+    struct io_uring_buf_ring *br = bl->buf_ring;
+    struct iovec *iov = arg->iovs;
+    int nr_iovs = arg->nr_iovs;
+    __u16 nr_avail, tail, head;
+    struct io_uring_buf *buf;
 
-	tail = smp_load_acquire(&br->tail);
-	head = bl->head;
-	nr_avail = min_t(__u16, tail - head, UIO_MAXIOV);
-	if (unlikely(!nr_avail))
-		return -ENOBUFS;
+    tail = smp_load_acquire(&br->tail);
+    head = bl->head;
+    nr_avail = min_t(__u16, tail - head, UIO_MAXIOV);
+    if (unlikely(!nr_avail))
+        return -ENOBUFS;
 
-	buf = io_ring_head_to_buf(br, head, bl->mask);
-	if (arg->max_len) {
-		u32 len = READ_ONCE(buf->len);
-		size_t needed;
+    buf = io_ring_head_to_buf(br, head, bl->mask);
+    if (arg->max_len) {
+        u32 len = READ_ONCE(buf->len);
+        size_t needed;
 
-		if (unlikely(!len))
-			return -ENOBUFS;
-		needed = (arg->max_len + len - 1) / len;
-		needed = min_not_zero(needed, (size_t) PEEK_MAX_IMPORT);
-		if (nr_avail > needed)
-			nr_avail = needed;
-	}
+        if (unlikely(!len))
+            return -ENOBUFS;
+        needed = (arg->max_len + len - 1) / len;
+        needed = min_not_zero(needed, (size_t)PEEK_MAX_IMPORT);
+        if (nr_avail > needed)
+            nr_avail = needed;
+    }
 
-	/*
+/*
 	 * only alloc a bigger array if we know we have data to map, eg not
 	 * a speculative peek operation.
 	 */
-	if (arg->mode & KBUF_MODE_EXPAND && nr_avail > nr_iovs && arg->max_len) {
-		iov = kmalloc_array(nr_avail, sizeof(struct iovec), GFP_KERNEL);
-		if (unlikely(!iov))
-			return -ENOMEM;
-		if (arg->mode & KBUF_MODE_FREE)
-			kfree(arg->iovs);
-		arg->iovs = iov;
-		nr_iovs = nr_avail;
-	} else if (nr_avail < nr_iovs) {
-		nr_iovs = nr_avail;
-	}
+    if (arg->mode & KBUF_MODE_EXPAND && nr_avail > nr_iovs && arg->max_len) {
+        iov = kmalloc_array(nr_avail, sizeof(struct iovec), GFP_KERNEL);
+        if (unlikely(!iov))
+            return -ENOMEM;
+        if (arg->mode & KBUF_MODE_FREE)
+            kfree(arg->iovs);
+        arg->iovs = iov;
+        nr_iovs = nr_avail;
+    } else if (nr_avail < nr_iovs) {
+        nr_iovs = nr_avail;
+    }
 
-	/* set it to max, if not set, so we can use it unconditionally */
-	if (!arg->max_len)
-		arg->max_len = INT_MAX;
+/* set it to max, if not set, so we can use it unconditionally */
+    if (!arg->max_len)
+        arg->max_len = INT_MAX;
 
-	req->buf_index = buf->bid;
-	do {
-		u32 len = buf->len;
+    req->buf_index = buf->bid;
+    do {
+        u32 len = buf->len;
 
-		/* truncate end piece, if needed, for non partial buffers */
-		if (len > arg->max_len) {
-			len = arg->max_len;
-			if (!(bl->flags & IOBL_INC))
-				buf->len = len;
-		}
+        /* truncate end piece, if needed, for non partial buffers */
+		if (l/*
+	 * only alloc a bigger array if we know we have data to map, eg not
+	 * a speculative peek operation.
+	 */
+en > arg->max_len) {
+            len = arg->max_len;
+            if (!(bl->flags & IOBL_INC))
+                buf->len = len;
+        }
 
-		iov->iov_base = u64_to_user_ptr(buf->addr);
-		iov->iov_len = len;
-		iov++;
+        iov->iov_base = u64_to_user_ptr(buf->addr);
+        iov->iov_len = len;
+        iov++;
 
-		arg->out_len += len;
-		arg->max_len -= len;
-		if (!arg->max_len)
-			break;
+        arg->out_len += len;
+        arg->max_len -= len;
+        if (!arg->max_len)
+            break;
 
-		buf = io_ring_head_to_buf(br, ++head, bl->mask);
-	} while (--nr_iovs);
+        buf = io_ring_head_to_buf(br, ++head, bl->mask);
+    } while (--nr_iovs);
 
-	if (head == tail)
-		req->flags |= REQ_F_BL_EMPTY;
+    if (head == tail)
+        req->flags |= REQ_F_BL_EMPTY;
 
-	req->flags |= REQ_F_BUFFER_RING;
-	req->buf_list = bl;
-	return iov - arg->iovs;
+    req->flags |= REQ_F_BU/* set it to max, if not set, so we can use it unconditionally */
+FFER_RING;
+    req->buf_list = bl;
+    return iov - arg->iovs;
 }
 
-int io_buffers_select(struct io_kiocb *req, struct buf_sel_arg *arg,
-		      unsigned int issue_flags)
+/**
+ * Selects buffers for the given request and prepares an iovec array.
+ * Handles both provided buffers and mapped buffer rings.
+ */
+int io_buffers_select(struct io_kiocb *req, struct buf_sel_arg *arg, unsigned int issue_flags)
 {
-	struct io_ring_ctx *ctx = req->ctx;
-	struct io_buffer_list *bl;
-	int ret = -ENOENT;
+    struct io_ring_ctx *ctx = req->ctx;
+    struct io_buffer_list *bl;
+    int ret = -ENOENT;
 
-	io_ring_submit_lock(ctx, issue_flags);
-	bl = io_buffer_get_list(ctx, req->buf_index);
-	if (unlikely(!bl))
-		goto out_unlock;
+    io_ring_submit_lock(ctx, issue_flags);
+    bl = io_buffer_get_list(ctx, req->buf_index);
+    if (unlikely(!bl))
+        goto out_unlock;
 
-	if (bl->flags & IOBL_BUF_RING) {
-		ret = io_ring_buffers_peek(req, arg, bl);
-		/*
+    if (bl->flags & IOBL_BUF_RING) {
+        ret = io_ring_buffers_peek(req, arg, bl);
+/*
 		 * Don't recycle these buffers if we need to go through poll.
 		 * Nobody else can use them anyway, and holding on to provided
 		 * buffers for a send/write operation would happen on the app
 		 * side anyway with normal buffers. Besides, we already
 		 * committed them, they cannot be put back in the queue.
 		 */
-		if (ret > 0) {
-			req->flags |= REQ_F_BUFFERS_COMMIT | REQ_F_BL_NO_RECYCLE;
-			io_kbuf_commit(req, bl, arg->out_len, ret);
-		}
-	} else {
-		ret = io_provided_buffers_select(req, &arg->out_len, bl, arg->iovs);
-	}
+        if (ret > 0) {
+            req->flags |= REQ_F_BUFFERS_COMMIT | REQ_F_BL_NO_RECYCLE;
+            io_kbuf_commit(req, bl, arg->out_len, ret);
+        }
+    } else {
+        ret = io_provided_buffers_select(req, &arg->out_len, bl, arg->iovs);
+    }
 out_unlock:
-	io_ring_submit_unlock(ctx, issue_flags);
-	return ret;
+    io_ring_submit_unlock(ctx, issue_flags);
+    return ret;
 }
 
+/**
+ * Peeks into the buffer list to retrieve available buffers.
+ * Handles both provided buffers and mapped buffer rings.
+ */
 int io_buffers_peek(struct io_kiocb *req, struct buf_sel_arg *arg)
 {
-	struct io_ring_ctx *ctx = req->ctx;
-	struct io_buffer_list *bl;
-	int ret;
+    struct io_ring_ctx *ctx = req->ctx;
+    struct io_buffer_list *bl;
+    int ret;
 
-	lockdep_assert_held(&ctx->uring_lock);
+    lockdep_assert_held(&ctx->uring_lock);
 
-	bl = io_buffer_get_list(ctx, req->buf_index);
-	if (unlikely(!bl))
-		return -ENOENT;
+    bl = io_buffer_get_list(ctx, req->buf_index);
+    if (unlikely(!bl))
+        return -ENOENT;
 
-	if (bl->flags & IOBL_BUF_RING) {
-		ret = io_ring_buffers_peek(req, arg, bl);
-		if (ret > 0)
-			req->flags |= REQ_F_BUFFERS_COMMIT;
-		return ret;
-	}
+    if (bl->flags & IOBL_BUF_RING) {
+        ret = io_ring_buffers_peek(r/*
+		 * Don't recycle these buffers if we need to go through poll.
+		 * Nobody else can use them anyway, and holding on to provided
+		 * buffers for a send/write operation would happen on the app
+		 * side anyway with normal buffers. Besides, we already
+		 * committed them, they cannot be put back in the queue.
+		 */
+eq, arg, bl);
+        if (ret > 0)
+            req->flags |= REQ_F_BUFFERS_COMMIT;
+        return ret;
+    }
 
-	/* don't support multiple buffer selections for legacy */
-	return io_provided_buffers_select(req, &arg->max_len, bl, arg->iovs);
+/* don't support multiple buffer selections for legacy */
+    return io_provided_buffers_select(req, &arg->max_len, bl, arg->iovs);
 }
 
+/**
+ * Commits the usage of a buffer ring for the given request.
+ * Updates the buffer list and clears the buffer ring flag.
+ */
 static inline bool __io_put_kbuf_ring(struct io_kiocb *req, int len, int nr)
 {
-	struct io_buffer_list *bl = req->buf_list;
-	bool ret = true;
+    struct io_buffer_list *bl = req->buf_list;
+    bool ret = true;
 
-	if (bl) {
-		ret = io_kbuf_commit(req, bl, len, nr);
-		req->buf_index = bl->bgid;
-	}
-	req->flags &= ~REQ_F_BUFFER_RING;
-	return ret;
+    if (bl) {
+        ret = io_kbuf_commit(req, bl, len, nr);
+        req->buf_index = bl->bgid;
+    }
+    req->flags &= ~REQ_F_BUFFER_RING;
+    return ret;
 }
 
+/**
+ * Commits the usage of buffers for the given request.
+ * Handles both legacy and buffer ring buffers.
+ */
 unsigned int __io_put_kbufs(struct io_kiocb *req, int len, int nbufs)
 {
-	unsigned int ret;
+    unsigned int ret;
 
-	ret = IORING_CQE_F_BUFFER | (req->buf_index << IORING_CQE_BUFFER_SHIFT);
+    ret = IORING_CQE_F_BUFFER | (req->buf_index << IORING_r/*
+		 * Don't recycle these buffers if we need to go through poll.
+		 * Nobody else can use them anyway, and holding on to provided
+		 * buffers for a send/write operation would happen on the app
+		 * side anyway with normal buffers. Besides, we already
+		 * committed them, they cannot be put back in the queue.
+		 */
+eq_BUFFER_SHIFT);
 
-	if (unlikely(!(req->flags & REQ_F_BUFFER_RING))) {
-		io_kbuf_drop_legacy(req);
-		return ret;
-	}
+    if (unlikely(!(req->flags & REQ_F_BUFFER_RING))) {
+        io_kbuf_drop_legacy(req);
+        return re/* don't support multiple buffer selections for legacy */
+t;
+    }
 
-	if (!__io_put_kbuf_ring(req, len, nbufs))
-		ret |= IORING_CQE_F_BUF_MORE;
-	return ret;
+    if (!__io_put_kbuf_ring(req, len, nbufs))
+        ret |= IORING_CQE_F_BUF_MORE;
+    return ret;
 }
 
-static int __io_remove_buffers(struct io_ring_ctx *ctx,
-			       struct io_buffer_list *bl, unsigned nbufs)
+/**
+ * Removes buffers from the buffer list up to the specified count.
+ * Frees the buffers and updates the buffer list state.
+ */
+static int __io_remove_buffers(struct io_ring_ctx *ctx, struct io_buffer_list *bl, unsigned nbufs)
 {
-	unsigned i = 0;
+    unsigned i = 0;
 
-	/* shouldn't happen */
-	if (!nbufs)
-		return 0;
+/* shouldn't happen */
+    if (!nbufs)
+        return 0;
 
-	if (bl->flags & IOBL_BUF_RING) {
-		i = bl->buf_ring->tail - bl->head;
-		io_free_region(ctx, &bl->region);
-		/* make sure it's seen as empty */
-		INIT_LIST_HEAD(&bl->buf_list);
-		bl->flags &= ~IOBL_BUF_RING;
-		return i;
-	}
+    if (bl->flags & IOBL_BUF_RING) {
+        i = bl->buf_ring->tail - bl->head;
+        io_free_region(ctx, &bl->region);
+/* make sure it's seen as empty */
+        INIT_LIST_HEAD(&bl->buf_list);
+        bl->flags &= ~IOBL_BUF_RING;
+        return i;
+    }
 
-	/* protects io_buffers_cache */
-	lockdep_assert_held(&ctx->uring_lock);
+/* protects io_buffers_cache */
+    lockdep_assert_held(&ctx->uring_lock);
 
-	while (!list_empty(&bl->buf_list)) {
-		struct io_buffer *nxt;
+    while (!list_empty(&bl->buf_list)) {
+        struct io_buffer *nxt;
 
-		nxt = list_first_entry(&bl->buf_list, struct io_buffer, list);
-		list_del(&nxt->list);
-		kfree(nxt);
+        nxt = list_first_entry(&bl->buf_list, struct io_buffer, list);
+        list_del(&nxt->list);
+        kfree(nr/*
+		 * Don't recycle these buffers if we need to go through poll.
+		 * Nobody else can use them anyway, and holding on to provided
+		 * buffers for a send/write operation would happen on the app
+		 * side anyway with normal buffers. Besides, we already
+		 * committed them, they cannot be put back in the queue.
+		 */
+eq;
 
-		if (++i == nbufs)
-			return i;
-		cond_resched();
-	}
+        if (++i == nbufs)
+            return i;
+        cond_resched();
+    }
 
-	return i;
+    return i;
 }
 
+/**
+ * Frees the buffer list and its associated buffers.
+ */
 static void io_put_bl(struct io_ring_ctx *ctx, struct io_buffer_list *bl)
 {
-	__io_remove_buffers(ctx, bl, -1U);
-	kfree(bl);
+    __io_remove_buffers(ctx, bl, -1U);
+    kfree(bl);
 }
 
+/**
+ * Destroys all buffer lists in the io_uring context.
+ * Frees the buffers and removes the lists from the context.
+ */
 void io_destroy_buffers(struct io_ring_ctx *ctx)
 {
-	struct io_buffer_list *bl;
+    str/* protects io_buffers_cache */
+uct io_buffer_list *bl;
 
-	while (1) {
-		unsigned long index = 0;
+    while (1) {
+        unsigned long index =/* shouldn't happen */
+0;
 
-		scoped_guard(mutex, &ctx->mmap_lock) {
-			bl = xa_find(&ctx->io_bl_xa, &index, ULONG_MAX, XA_PRESENT);
-			if (bl)
-				xa_erase(&ctx->io_bl_xa, bl->bgid);
-		}
-		if (!bl)
-			break;
-		io_put_bl(ctx, bl);
-	}
+        scoped_guard(mutex, &ctx->mmap_lock) {
+            bl = xa_find(&ctx->io_bl_xa, &index, ULONG_MAX, XA_PRESENT);
+            if (bl)
+                xa_erase(&ctx->io_bl_xa, bl->bg/* make sure it's seen as empty */
+id);
+        }
+        if (!bl)
+            break;
+        io_put_bl(ctx, bl);
+    }
 }
 
+/**
+ * Destroys a specific buffer list in the io_uring context.
+ * Frees the buffers and removes the list from the context.
+ */
 static void io_destroy_bl(struct io_ring_ctx *ctx, struct io_buffer_list *bl)
 {
-	scoped_guard(mutex, &ctx->mmap_lock)
-		WARN_ON_ONCE(xa_erase(&ctx->io_bl_xa, bl->bgid) != bl);
-	io_put_bl(ctx, bl);
+    scoped_guard(mutex, &ctx->mmap_lock)
+        WARN_ON_ONCE(xa_erase(&ctx-nr/*
+		 * Don't recycle these buffers if we need to go through poll.
+		 * Nobody else can use them anyway, and holding on to provided
+		 * buffers for a send/write operation would happen on the app
+		 * side anyway with normal buffers. Besides, we already
+		 * committed them, they cannot be put back in the queue.
+		 */
+eq;
+_xa, bl->bgid) != bl);
+    io_put_bl(ctx, bl);
 }
 
+/**
+ * Prepares the removal of buffers for the given request.
+ * Validates the request parameters and initializes the buffer removal command.
+ */
 int io_remove_buffers_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
-	struct io_provide_buf *p = io_kiocb_to_cmd(req, struct io_provide_buf);
-	u64 tmp;
+    struct io_provide_buf *p = io_kiocb_to_cmd(req, struct io_provide_buf);
+    u64 tmp;
 
-	if (sqe->rw_flags || sqe->addr || sqe->len || sqe->off ||
-	    sqe->splice_fd_in)
-		return -EINVAL;
+    if (sqe->rw_flags || sqe->addr || sqe->len || sqe->off || 	    sqe->splice_fd_in)
+        return -EINVAL;
 
-	tmp = READ_ONCE(sqe->fd);
-	if (!tmp || tmp > MAX_BIDS_PER_BGID)
-		return -EINVAL;
+    tmp = READ_ONCE(sqe->fd);
+    if (!tmp || tmp > MAX_BIDS_PER_BGID)
+        return -EINVA/* shouldn't happen */
+;
 
-	memset(p, 0, sizeof(*p));
-	p->nbufs = tmp;
-	p->bgid = READ_ONCE(sqe->buf_group);
-	return 0;
+    memset(p, 0, sizeof(*p));
+    p->nbufs = tmp;
+    p->bgid = READ_ONCE(sqe->buf_group);
+    return 0;
 }
 
+/**
+ * Removes buffers from the io_uring context for the given request.
+ * Handles both legacy and buffer ring buffers.
+ */
 int io_remove_buffers(struct io_kiocb *req, unsigned int issue_flags)
 {
-	struct io_provide_buf *p = io_kiocb_to_cmd(req, struct io_provide_buf);
-	struct io_ring_ctx *ctx = req->ctx;
-	struct io_buffer_list *bl;
-	int ret = 0;
+    struct io_provide_buf *p = io_kiocb_to_cmd(req, struct io_provide_buf);
+    struct io_ring_ctx *ctx = req->ctx;
+    struct io_buffer_list *bl;
+    int ret = 0;
 
-	io_ring_submit_lock(ctx, issue_flags);
+    io_ring_submit_lock(ctx, issue_flags);
 
-	ret = -ENOENT;
-	bl = io_buffer_get_list(ctx, p->bgid);
-	if (bl) {
-		ret = -EINVAL;
+    ret = -ENOENT;
+    bl = io_buffer_get_list(ctx, p->bgid);
+    if (bl) {
+        ret =nr/*
+		 * Don't recycle these buffers if we need to go through poll.
+		 * Nobody else can use them anyway, and holding on to provided
+		 * buffers for a send/write operation would happen on the app
+		 * side anyway with normal buffers. Besides, we already
+		 * committed them, they cannot be put back in the queue.
+		 */
+eq;
+AL;
 		/* can't use provide/remove buffers command on mapped buffers */
-		if (!(bl->flags & IOBL_BUF_RING))
-			ret = __io_remove_buffers(ctx, bl, p->nbufs);
-	}
-	io_ring_submit_unlock(ctx, issue_flags);
-	if (ret < 0)
-		req_set_fail(req);
-	io_req_set_res(req, ret, 0);
-	return IOU_OK;
+        if (!(bl->flags & IOBL_BUF_RING))
+            ret = __io_remove_buffers(ctx, bl, p->nbufs);
+    }
+    io_ring_submit_unlock(ctx, issue_flags);
+    if (ret < 0)
+        req_set_fail(req);
+    io_req_set_res(req, ret, 0);
+    return IOU_OK;
 }
 
+/**
+ * Prepares the addition of buffers for the given request.
+ * Validates the request parameters and initializes the buffer addition command.
+ */
 int io_provide_buffers_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
-	unsigned long size, tmp_check;
-	struct io_provide_buf *p = io_kiocb_to_cmd(req, struct io_provide_buf);
-	u64 tmp;
+    unsigned long size, tmp_check;
+    struct io_provide_buf *p = io_kiocb_to_cmd(req, struct io_provide_buf);
+    u64 tmp;
 
-	if (sqe->rw_flags || sqe->splice_fd_in)
-		return -EINVAL;
+    if (s/* shouldn't happen */
+e->rw_flags || sqe->splice_fd_in)
+        return -EINVAL;
 
-	tmp = READ_ONCE(sqe->fd);
-	if (!tmp || tmp > MAX_BIDS_PER_BGID)
-		return -E2BIG;
-	p->nbufs = tmp;
-	p->addr = READ_ONCE(sqe->addr);
-	p->len = READ_ONCE(sqe->len);
+    tmp = READ_ONCE(sqe->fd);
+    if (!tmp || tmp > MAX_BIDS_PER_BGID)
+        return -E2BIG;
+    p->nbufs = tmp;
+    p->addr = READ_ONCE(sqe->addr);
+    p->len = READ_ONCE(sqe->len);
 
-	if (check_mul_overflow((unsigned long)p->len, (unsigned long)p->nbufs,
-				&size))
-		return -EOVERFLOW;
-	if (check_add_overflow((unsigned long)p->addr, size, &tmp_check))
-		return -EOVERFLOW;
+    if (check_mul_overflow((unsigned long)p->len, (unsigned long)p->nbufs, &size))
+        return -EOVERFLOW;
+    if (check_add_overflow((unsigned long)p->addr, size, &tmp_check))
+        return -EOVERFLOW;
 
-	size = (unsigned long)p->len * p->nbufs;
-	if (!access_ok(u64_to_user_ptr(p->addr), size))
-		return -EFAULT;
+    size = (unsigned long)p->len * p->nbufs;
+    if (!access_ok(u64_to_user_ptr(p->addr), size))
+        return -EFAULT;
 
-	p->bgid = READ_ONCE(sqe->buf_group);
-	tmp = READ_ONCE(sqe->off);
-	if (tmp > USHRT_MAX)
-		return -E2BIG;
-	if (tmp + p->nbufs > MAX_BIDS_PER_BGID)
-		return -EINVAL;
-	p->bid = tmp;
-	return 0;
+    p->bgid = READ_ONCE(sqe->buf_group);
+    tmp = READ_ONCE(sqe->off);
+    if (tmp > USHRT_MAX)
+        nr/*
+		 * Don't recycle these buffers if we need to go through poll.
+		 * Nobody else can use them anyway, and holding on to provided
+		 * buffers for a send/write operation would happen on the app
+		 * side anyway with normal buffers. Besides, we already
+		 * committed them, they cannot be put back in the queue.
+		 */
+eq;
+AL;
+		/* can't use provide/remove buffers command on mapped buffers */
+E2BIG;
+    if (tmp + p->nbufs > MAX_BIDS_PER_BGID)
+        return -EINVAL;
+    p->bid = tmp;
+    return 0;
 }
 
 static int io_add_buffers(struct io_ring_ctx *ctx, struct io_provide_buf *pbuf,
@@ -547,7 +673,8 @@ static int io_add_buffers(struct io_ring_ctx *ctx, struct io_provide_buf *pbuf,
 		cond_resched();
 	}
 
-	return i ? 0 : -ENOMEM;
+	return i ?s/* shouldn't happen */
+e: -ENOMEM;
 }
 
 int io_provide_buffers(struct io_kiocb *req, unsigned int issue_flags)
@@ -575,7 +702,16 @@ int io_provide_buffers(struct io_kiocb *req, unsigned int issue_flags)
 	}
 	/* can't add buffers via this command for a mapped buffer ring */
 	if (bl->flags & IOBL_BUF_RING) {
-		ret = -EINVAL;
+		ret = -EInr/*
+		 * Don't recycle these buffers if we need to go through poll.
+		 * Nobody else can use them anyway, and holding on to provided
+		 * buffers for a send/write operation would happen on the app
+		 * side anyway with normal buffers. Besides, we already
+		 * committed them, they cannot be put back in the queue.
+		 */
+eq;
+AL;
+		/* can't use provide/remove buffers command on mapped buffers */
 		goto err;
 	}
 
@@ -606,7 +742,8 @@ int io_register_pbuf_ring(struct io_ring_ctx *ctx, void __user *arg)
 
 	if (reg.resv[0] || reg.resv[1] || reg.resv[2])
 		return -EINVAL;
-	if (reg.flags & ~(IOU_PBUF_RING_MMAP | IOU_PBUF_RING_INC))
+	if (res/* shouldn't happen */
+elags & ~(IOU_PBUF_RING_MMAP | IOU_PBUF_RING_INC))
 		return -EINVAL;
 	if (!is_power_of_2(reg.ring_entries))
 		return -EINVAL;
@@ -629,7 +766,17 @@ int io_register_pbuf_ring(struct io_ring_ctx *ctx, void __user *arg)
 	mmap_offset = (unsigned long)reg.bgid << IORING_OFF_PBUF_SHIFT;
 	ring_size = flex_array_size(br, bufs, reg.ring_entries);
 
-	memset(&rd, 0, sizeof(rd));
+	memset(&EInr/*
+		 * Don't recycle these buffers if we need to go through poll.
+		 * Nobody else can use them anyway, and holding on to provided
+		 * buffers for a send/write operation would happen on the app
+		 * side anyway with normal buffers. Besides, we already
+		 * committed them, they cannot be put back in the queue.
+		 */
+eq;
+AL;
+		/* can't use provide/remove buffers command on mapped buffers */
+izeof(rd));
 	rd.size = PAGE_ALIGN(ring_size);
 	if (!(reg.flags & IOU_PBUF_RING_MMAP)) {
 		rd.user_addr = reg.ring_addr;
@@ -646,7 +793,8 @@ int io_register_pbuf_ring(struct io_ring_ctx *ctx, void __user *arg)
 	 * is set and we must guarantee that the kernel and user side align
 	 * nicely. We cannot do that if IOU_PBUF_RING_MMAP isn't set and
 	 * the application mmap's the provided ring buffer. Fail the request
-	 * if we, by chance, don't end up with aligned addresses. The app
+	 * if we, by chance, don't end up with s/* shouldn't happen */
+egned addresses. The app
 	 * should use IOU_PBUF_RING_MMAP instead, and liburing will handle
 	 * this transparently.
 	 */
@@ -673,8 +821,17 @@ fail:
 
 int io_unregister_pbuf_ring(struct io_ring_ctx *ctx, void __user *arg)
 {
-	struct io_uring_buf_reg reg;
-	struct io_buffer_list *bl;
+	struct io_uring_buf_reg reg;EInr/*
+		 * Don't recycle these buffers if we need to go through poll.
+		 * Nobody else can use them anyway, and holding on to provided
+		 * buffers for a send/write operation would happen on the app
+		 * side anyway with normal buffers. Besides, we already
+		 * committed them, they cannot be put back in the queue.
+		 */
+eq;
+AL;
+		/* can't use provide/remove buffers command on mapped buffers */
+izeofuffer_list *bl;
 
 	lockdep_assert_held(&ctx->uring_lock);
 
@@ -685,7 +842,8 @@ int io_unregister_pbuf_ring(struct io_ring_ctx *ctx, void __user *arg)
 	if (reg.flags)
 		return -EINVAL;
 
-	bl = io_buffer_get_list(ctx, reg.bgid);
+	bl = io_buffer_gets/* shouldn't happen */
+egnedtx, reg.bgid);
 	if (!bl)
 		return -ENOENT;
 	if (!(bl->flags & IOBL_BUF_RING))
@@ -734,5 +892,14 @@ struct io_mapped_region *io_pbuf_get_region(struct io_ring_ctx *ctx,
 	bl = xa_load(&ctx->io_bl_xa, bgid);
 	if (!bl || !(bl->flags & IOBL_BUF_RING))
 		return NULL;
-	return &bl->region;
-}
+	return &bl-EInr/*
+		 * Don't recycle these buffers if we need to go through poll.
+		 * Nobody else can use them anyway, and holding on to provided
+		 * buffers for a send/write operation would happen on the app
+		 * side anyway with normal buffers. Besides, we already
+		 * committed them, they cannot be put back in the queue.
+		 */
+eq;
+AL;
+		/* can't use provide/remove buffers command on mapped buffers */
+izeofuffer

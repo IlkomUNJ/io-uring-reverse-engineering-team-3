@@ -25,6 +25,9 @@ enum {
 	IO_EVENTFD_OP_SIGNAL_BIT,
 };
 
+/**
+ * Frees the io_ev_fd structure and releases its associated eventfd context.
+ */
 static void io_eventfd_free(struct rcu_head *rcu)
 {
 	struct io_ev_fd *ev_fd = container_of(rcu, struct io_ev_fd, rcu);
@@ -33,12 +36,19 @@ static void io_eventfd_free(struct rcu_head *rcu)
 	kfree(ev_fd);
 }
 
+/**
+ * Decrements the reference count of the io_ev_fd structure and frees it
+ * if the count reaches zero.
+ */
 static void io_eventfd_put(struct io_ev_fd *ev_fd)
 {
 	if (refcount_dec_and_test(&ev_fd->refs))
 		call_rcu(&ev_fd->rcu, io_eventfd_free);
 }
 
+/**
+ * Signals the eventfd and releases the io_ev_fd structure.
+ */
 static void io_eventfd_do_signal(struct rcu_head *rcu)
 {
 	struct io_ev_fd *ev_fd = container_of(rcu, struct io_ev_fd, rcu);
@@ -47,6 +57,10 @@ static void io_eventfd_do_signal(struct rcu_head *rcu)
 	io_eventfd_put(ev_fd);
 }
 
+/**
+ * Releases the io_ev_fd structure and the RCU read lock.
+ * If put_ref is true, decrements the reference count of the io_ev_fd.
+ */
 static void io_eventfd_release(struct io_ev_fd *ev_fd, bool put_ref)
 {
 	if (put_ref)
@@ -112,6 +126,11 @@ static struct io_ev_fd *io_eventfd_grab(struct io_ring_ctx *ctx)
 	return NULL;
 }
 
+/*
+ * Signal the eventfd if the caller is an async worker and the eventfd
+ * is valid. If the caller is not an async worker, we don't signal
+ * the eventfd.
+ */
 void io_eventfd_signal(struct io_ring_ctx *ctx)
 {
 	struct io_ev_fd *ev_fd;
@@ -121,6 +140,15 @@ void io_eventfd_signal(struct io_ring_ctx *ctx)
 		io_eventfd_release(ev_fd, __io_eventfd_signal(ev_fd));
 }
 
+/*
+ * Flush the eventfd signal if the caller is an async worker and the
+ * eventfd is valid. If the caller is not an async worker, we don't
+ * signal the eventfd.
+ *
+ * This function is called from io_uring_flush_task_work() to ensure
+ * that the eventfd signal is sent after all task work has been
+ * completed.
+ */
 void io_eventfd_flush_signal(struct io_ring_ctx *ctx)
 {
 	struct io_ev_fd *ev_fd;
@@ -150,6 +178,10 @@ void io_eventfd_flush_signal(struct io_ring_ctx *ctx)
 	}
 }
 
+/**
+ * Registers an eventfd with the io_ring_ctx for completion queue notifications.
+ * Returns 0 on success or a negative error code on failure.
+ */
 int io_eventfd_register(struct io_ring_ctx *ctx, void __user *arg,
 			unsigned int eventfd_async)
 {
@@ -189,6 +221,10 @@ int io_eventfd_register(struct io_ring_ctx *ctx, void __user *arg,
 	return 0;
 }
 
+/**
+ * Unregisters the eventfd from the io_ring_ctx. If successful, it returns 0,
+ * otherwise it returns -ENXIO if no eventfd was registered.
+ */
 int io_eventfd_unregister(struct io_ring_ctx *ctx)
 {
 	struct io_ev_fd *ev_fd;

@@ -16,6 +16,9 @@
 #include "rsrc.h"
 
 #ifdef CONFIG_PROC_FS
+/**
+ * Displays credential information for a given user ID in the seq_file.
+ */
 static __cold int io_uring_show_cred(struct seq_file *m, unsigned int id,
 		const struct cred *cred)
 {
@@ -47,6 +50,10 @@ static __cold int io_uring_show_cred(struct seq_file *m, unsigned int id,
 }
 
 #ifdef CONFIG_NET_RX_BUSY_POLL
+/**
+ * Displays NAPI tracking information in the seq_file, including the tracking
+ * strategy and busy poll details.
+ */
 static __cold void common_tracking_show_fdinfo(struct io_ring_ctx *ctx,
 					       struct seq_file *m,
 					       const char *tracking_strategy)
@@ -60,6 +67,10 @@ static __cold void common_tracking_show_fdinfo(struct io_ring_ctx *ctx,
 		seq_puts(m, "napi_prefer_busy_poll:\tfalse\n");
 }
 
+/**
+ * Displays NAPI-related information in the seq_file, depending on the tracking
+ * mode.
+ */
 static __cold void napi_show_fdinfo(struct io_ring_ctx *ctx,
 				    struct seq_file *m)
 {
@@ -80,6 +91,10 @@ static __cold void napi_show_fdinfo(struct io_ring_ctx *ctx,
 	}
 }
 #else
+/**
+ * Displays NAPI-related information in the seq_file, but does nothing in
+ * this case since NAPI is not enabled.
+ */
 static inline void napi_show_fdinfo(struct io_ring_ctx *ctx,
 				    struct seq_file *m)
 {
