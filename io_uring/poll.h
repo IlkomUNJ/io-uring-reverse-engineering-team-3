@@ -32,17 +32,44 @@ static inline void io_poll_multishot_retry(struct io_kiocb *req)
 	atomic_inc(&req->poll_refs);
 }
 
+/**
+ * Prepares a poll add request from an io_uring submission queue entry (SQE).
+ */
 int io_poll_add_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);
+
+/**
+ * Executes a poll add request.
+ */
 int io_poll_add(struct io_kiocb *req, unsigned int issue_flags);
 
+/**
+ * Prepares a poll remove request from an io_uring submission queue entry (SQE).
+ */
 int io_poll_remove_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);
+
+/**
+ * Executes a poll remove request.
+ */
 int io_poll_remove(struct io_kiocb *req, unsigned int issue_flags);
 
-struct io_cancel_data;
+/**
+ * Cancels a poll request based on the provided cancellation data.
+ */
 int io_poll_cancel(struct io_ring_ctx *ctx, struct io_cancel_data *cd,
-		   unsigned issue_flags);
-int io_arm_poll_handler(struct io_kiocb *req, unsigned issue_flags);
-bool io_poll_remove_all(struct io_ring_ctx *ctx, struct io_uring_task *tctx,
-			bool cancel_all);
+           unsigned issue_flags);
 
+/**
+ * Arms a poll handler for a request.
+ */
+int io_arm_poll_handler(struct io_kiocb *req, unsigned issue_flags);
+
+/**
+ * Removes all poll requests from the cancellation hash table.
+ */
+bool io_poll_remove_all(struct io_ring_ctx *ctx, struct io_uring_task *tctx,
+            bool cancel_all);
+
+/**
+ * Handles task work for a poll request.
+ */
 void io_poll_task_func(struct io_kiocb *req, io_tw_token_t tw);

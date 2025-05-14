@@ -28,6 +28,9 @@
 
 #define IO_DMA_ATTR (DMA_ATTR_SKIP_CPU_SYNC | DMA_ATTR_WEAK_ORDERING)
 
+/**
+ * Unmaps a DMA-mapped area for zero-copy receive.
+ */
 static void __io_zcrx_unmap_area(struct io_zcrx_ifq *ifq,
 				 struct io_zcrx_area *area, int nr_mapped)
 {
@@ -44,12 +47,19 @@ static void __io_zcrx_unmap_area(struct io_zcrx_ifq *ifq,
 	}
 }
 
+/**
+ * Unmaps a zero-copy receive area if it is mapped.
+ */
 static void io_zcrx_unmap_area(struct io_zcrx_ifq *ifq, struct io_zcrx_area *area)
 {
 	if (area->is_mapped)
 		__io_zcrx_unmap_area(ifq, area, area->nia.num_niovs);
 }
 
+/**
+ * Maps a zero-copy receive area for DMA.
+ * Returns 0 on success or -EINVAL on failure.
+ */
 static int io_zcrx_map_area(struct io_zcrx_ifq *ifq, struct io_zcrx_area *area)
 {
 	int i;
@@ -262,6 +272,10 @@ err:
 	return ret;
 }
 
+/**
+ * Allocates and initializes a zero-copy receive interface queue.
+ * Returns a pointer to the allocated queue or NULL on failure.
+ */
 static struct io_zcrx_ifq *io_zcrx_ifq_alloc(struct io_ring_ctx *ctx)
 {
 	struct io_zcrx_ifq *ifq;
@@ -312,6 +326,9 @@ static void io_close_queue(struct io_zcrx_ifq *ifq)
 	ifq->if_rxq = -1;
 }
 
+/**
+ * Frees resources associated with a zero-copy receive interface queue.
+ */
 static void io_zcrx_ifq_free(struct io_zcrx_ifq *ifq)
 {
 	io_close_queue(ifq);
@@ -326,6 +343,10 @@ static void io_zcrx_ifq_free(struct io_zcrx_ifq *ifq)
 	kfree(ifq);
 }
 
+/**
+ * Registers a zero-copy receive interface queue for io_uring.
+ * Returns 0 on success or a negative error code on failure.
+ */
 int io_register_zcrx_ifq(struct io_ring_ctx *ctx,
 			  struct io_uring_zcrx_ifq_reg __user *arg)
 {
@@ -421,6 +442,9 @@ err:
 	return ret;
 }
 
+/**
+ * Unregisters all zero-copy receive interface queues for io_uring.
+ */
 void io_unregister_zcrx_ifqs(struct io_ring_ctx *ctx)
 {
 	struct io_zcrx_ifq *ifq = ctx->ifq;
@@ -953,6 +977,10 @@ out:
 	return ret;
 }
 
+/**
+ * Handles zero-copy receive for TCP sockets.
+ * Returns the number of bytes received or a negative error code on failure.
+ */
 int io_zcrx_recv(struct io_kiocb *req, struct io_zcrx_ifq *ifq,
 		 struct socket *sock, unsigned int flags,
 		 unsigned issue_flags, unsigned int *len)

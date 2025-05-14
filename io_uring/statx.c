@@ -20,6 +20,12 @@ struct io_statx {
 	struct statx __user		*buffer;
 };
 
+/**
+ * Prepares an io_statx operation by initializing the fields of the io_statx structure.
+ * Validates the provided SQE fields and retrieves the filename.
+ * 
+ * Returns 0 on success, or a negative error code if validation or filename retrieval fails.
+ */
 int io_statx_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_statx *sx = io_kiocb_to_cmd(req, struct io_statx);
@@ -50,6 +56,11 @@ int io_statx_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/**
+ * Executes an io_statx operation to retrieve file attributes.
+ * 
+ * Returns IOU_OK after setting the result in the request.
+ */
 int io_statx(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_statx *sx = io_kiocb_to_cmd(req, struct io_statx);
@@ -62,6 +73,9 @@ int io_statx(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+/**
+ * Cleans up resources used by an io_statx operation.
+ */
 void io_statx_cleanup(struct io_kiocb *req)
 {
 	struct io_statx *sx = io_kiocb_to_cmd(req, struct io_statx);

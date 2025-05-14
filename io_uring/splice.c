@@ -24,125 +24,167 @@ struct io_splice {
 	struct io_rsrc_node		*rsrc_node;
 };
 
+/**
+ * Prepare the io_splice command by initializing its fields based on the provided
+ * io_uring submission queue entry (SQE). Validates the flags and sets the request
+ * to force asynchronous execution.
+ * 
+ * Returns 0 on success or -EINVAL if invalid flags are provided.
+ */
 static int __io_splice_prep(struct io_kiocb *req,
-			    const struct io_uring_sqe *sqe)
+                const struct io_uring_sqe *sqe)
 {
-	struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
-	unsigned int valid_flags = SPLICE_F_FD_IN_FIXED | SPLICE_F_ALL;
+    struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
+    unsigned int valid_flags = SPLICE_F_FD_IN_FIXED | SPLICE_F_ALL;
 
-	sp->len = READ_ONCE(sqe->len);
-	sp->flags = READ_ONCE(sqe->splice_flags);
-	if (unlikely(sp->flags & ~valid_flags))
-		return -EINVAL;
-	sp->splice_fd_in = READ_ONCE(sqe->splice_fd_in);
-	sp->rsrc_node = NULL;
-	req->flags |= REQ_F_FORCE_ASYNC;
-	return 0;
+    sp->len = READ_ONCE(sqe->len);
+    sp->flags = READ_ONCE(sqe->splice_flags);
+    if (unlikely(sp->flags & ~valid_flags))
+        return -EINVAL;
+    sp->splice_fd_in = READ_ONCE(sqe->splice_fd_in);
+    sp->rsrc_node = NULL;
+    req->flags |= REQ_F_FORCE_ASYNC;
+    return 0;
 }
 
+/**
+ * Prepare an io_tee operation by validating the offsets in the SQE.
+ * Calls __io_splice_prep for further initialization.
+ * 
+ * Returns 0 on success or -EINVAL if offsets are invalid.
+ */
 int io_tee_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
-	if (READ_ONCE(sqe->splice_off_in) || READ_ONCE(sqe->off))
-		return -EINVAL;
-	return __io_splice_prep(req, sqe);
+    if (READ_ONCE(sqe->splice_off_in) || READ_ONCE(sqe->off))
+        return -EINVAL;
+    return __io_splice_prep(req, sqe);
 }
 
+/**
+ * Clean up resources associated with an io_splice request.
+ * Releases the resource node if it was allocated.
+ */
 void io_splice_cleanup(struct io_kiocb *req)
 {
-	struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
+    struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
 
-	if (sp->rsrc_node)
-		io_put_rsrc_node(req->ctx, sp->rsrc_node);
+    if (sp->rsrc_node)
+        io_put_rsrc_node(req->ctx, sp->rsrc_node);
 }
 
+/**
+ * Retrieve the input file for an io_splice operation.
+ * If the SPLICE_F_FD_IN_FIXED flag is set, it looks up the file in the resource table.
+ * Otherwise, it retrieves the file normally.
+ * 
+ * Returns a pointer to the file on success or NULL if the file cannot be found.
+ */
 static struct file *io_splice_get_file(struct io_kiocb *req,
-				       unsigned int issue_flags)
+                       unsigned int issue_flags)
 {
-	struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
-	struct io_ring_ctx *ctx = req->ctx;
-	struct io_rsrc_node *node;
-	struct file *file = NULL;
+    struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
+    struct io_ring_ctx *ctx = req->ctx;
+    struct io_rsrc_node *node;
+    struct file *file = NULL;
 
-	if (!(sp->flags & SPLICE_F_FD_IN_FIXED))
-		return io_file_get_normal(req, sp->splice_fd_in);
+    if (!(sp->flags & SPLICE_F_FD_IN_FIXED))
+        return io_file_get_normal(req, sp->splice_fd_in);
 
-	io_ring_submit_lock(ctx, issue_flags);
-	node = io_rsrc_node_lookup(&ctx->file_table.data, sp->splice_fd_in);
-	if (node) {
-		node->refs++;
-		sp->rsrc_node = node;
-		file = io_slot_file(node);
-		req->flags |= REQ_F_NEED_CLEANUP;
-	}
-	io_ring_submit_unlock(ctx, issue_flags);
-	return file;
+    io_ring_submit_lock(ctx, issue_flags);
+    node = io_rsrc_node_lookup(&ctx->file_table.data, sp->splice_fd_in);
+    if (node) {
+        node->refs++;
+        sp->rsrc_node = node;
+        file = io_slot_file(node);
+        req->flags |= REQ_F_NEED_CLEANUP;
+    }
+    io_ring_submit_unlock(ctx, issue_flags);
+    return file;
 }
 
+/**
+ * Execute an io_tee operation, which duplicates data from the input file to the output file.
+ * Uses the do_tee function to perform the actual operation.
+ * 
+ * Returns IOU_OK on success or sets the request to fail if an error occurs.
+ */
 int io_tee(struct io_kiocb *req, unsigned int issue_flags)
 {
-	struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
-	struct file *out = sp->file_out;
-	unsigned int flags = sp->flags & ~SPLICE_F_FD_IN_FIXED;
-	struct file *in;
-	ssize_t ret = 0;
+    struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
+    struct file *out = sp->file_out;
+    unsigned int flags = sp->flags & ~SPLICE_F_FD_IN_FIXED;
+    struct file *in;
+    ssize_t ret = 0;
 
-	WARN_ON_ONCE(issue_flags & IO_URING_F_NONBLOCK);
+    WARN_ON_ONCE(issue_flags & IO_URING_F_NONBLOCK);
 
-	in = io_splice_get_file(req, issue_flags);
-	if (!in) {
-		ret = -EBADF;
-		goto done;
-	}
+    in = io_splice_get_file(req, issue_flags);
+    if (!in) {
+        ret = -EBADF;
+        goto done;
+    }
 
-	if (sp->len)
-		ret = do_tee(in, out, sp->len, flags);
+    if (sp->len)
+        ret = do_tee(in, out, sp->len, flags);
 
-	if (!(sp->flags & SPLICE_F_FD_IN_FIXED))
-		fput(in);
+    if (!(sp->flags & SPLICE_F_FD_IN_FIXED))
+        fput(in);
 done:
-	if (ret != sp->len)
-		req_set_fail(req);
-	io_req_set_res(req, ret, 0);
-	return IOU_OK;
+    if (ret != sp->len)
+        req_set_fail(req);
+    io_req_set_res(req, ret, 0);
+    return IOU_OK;
 }
 
+/**
+ * Prepare an io_splice operation by initializing the input and output offsets.
+ * Calls __io_splice_prep for further initialization.
+ * 
+ * Returns 0 on success.
+ */
 int io_splice_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
-	struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
+    struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
 
-	sp->off_in = READ_ONCE(sqe->splice_off_in);
-	sp->off_out = READ_ONCE(sqe->off);
-	return __io_splice_prep(req, sqe);
+    sp->off_in = READ_ONCE(sqe->splice_off_in);
+    sp->off_out = READ_ONCE(sqe->off);
+    return __io_splice_prep(req, sqe);
 }
 
+/**
+ * Execute an io_splice operation, which transfers data from the input file to the output file.
+ * Uses the do_splice function to perform the actual operation.
+ * 
+ * Returns IOU_OK on success or sets the request to fail if an error occurs.
+ */
 int io_splice(struct io_kiocb *req, unsigned int issue_flags)
 {
-	struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
-	struct file *out = sp->file_out;
-	unsigned int flags = sp->flags & ~SPLICE_F_FD_IN_FIXED;
-	loff_t *poff_in, *poff_out;
-	struct file *in;
-	ssize_t ret = 0;
+    struct io_splice *sp = io_kiocb_to_cmd(req, struct io_splice);
+    struct file *out = sp->file_out;
+    unsigned int flags = sp->flags & ~SPLICE_F_FD_IN_FIXED;
+    loff_t *poff_in, *poff_out;
+    struct file *in;
+    ssize_t ret = 0;
 
-	WARN_ON_ONCE(issue_flags & IO_URING_F_NONBLOCK);
+    WARN_ON_ONCE(issue_flags & IO_URING_F_NONBLOCK);
 
-	in = io_splice_get_file(req, issue_flags);
-	if (!in) {
-		ret = -EBADF;
-		goto done;
-	}
+    in = io_splice_get_file(req, issue_flags);
+    if (!in) {
+        ret = -EBADF;
+        goto done;
+    }
 
-	poff_in = (sp->off_in == -1) ? NULL : &sp->off_in;
-	poff_out = (sp->off_out == -1) ? NULL : &sp->off_out;
+    poff_in = (sp->off_in == -1) ? NULL : &sp->off_in;
+    poff_out = (sp->off_out == -1) ? NULL : &sp->off_out;
 
-	if (sp->len)
-		ret = do_splice(in, poff_in, out, poff_out, sp->len, flags);
+    if (sp->len)
+        ret = do_splice(in, poff_in, out, poff_out, sp->len, flags);
 
-	if (!(sp->flags & SPLICE_F_FD_IN_FIXED))
-		fput(in);
+    if (!(sp->flags & SPLICE_F_FD_IN_FIXED))
+        fput(in);
 done:
-	if (ret != sp->len)
-		req_set_fail(req);
-	io_req_set_res(req, ret, 0);
-	return IOU_OK;
+    if (ret != sp->len)
+        req_set_fail(req);
+    io_req_set_res(req, ret, 0);
+    return IOU_OK;
 }

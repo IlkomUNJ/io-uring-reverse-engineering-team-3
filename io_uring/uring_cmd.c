@@ -16,6 +16,9 @@
 #include "rsrc.h"
 #include "uring_cmd.h"
 
+/**
+ * Frees the memory associated with an asynchronous command.
+ */
 void io_cmd_cache_free(const void *entry)
 {
 	struct io_async_cmd *ac = (struct io_async_cmd *)entry;
@@ -49,6 +52,9 @@ static void io_req_uring_cleanup(struct io_kiocb *req, unsigned int issue_flags)
 	}
 }
 
+/**
+ * Cleans up resources for a uring command request.
+ */
 void io_uring_cmd_cleanup(struct io_kiocb *req)
 {
 	io_req_uring_cleanup(req, 0);
@@ -97,14 +103,8 @@ static void io_uring_cmd_del_cancelable(struct io_uring_cmd *cmd,
 	io_ring_submit_unlock(ctx, issue_flags);
 }
 
-/*
- * Mark this command as concelable, then io_uring_try_cancel_uring_cmd()
- * will try to cancel this issued command by sending ->uring_cmd() with
- * issue_flags of IO_URING_F_CANCEL.
- *
- * The command is guaranteed to not be done when calling ->uring_cmd()
- * with IO_URING_F_CANCEL, but it is driver's responsibility to deal
- * with race between io_uring canceling and normal completion.
+/**
+ * Marks a uring command as cancelable, allowing it to be canceled later.
  */
 void io_uring_cmd_mark_cancelable(struct io_uring_cmd *cmd,
 		unsigned int issue_flags)
@@ -152,9 +152,8 @@ static inline void io_req_set_cqe32_extra(struct io_kiocb *req,
 	req->big_cqe.extra2 = extra2;
 }
 
-/*
- * Called by consumers of io_uring_cmd, if they originally returned
- * -EIOCBQUEUED upon receiving the command.
+/**
+ * Completes a uring command and cleans up resources.
  */
 void io_uring_cmd_done(struct io_uring_cmd *ioucmd, ssize_t ret, u64 res2,
 		       unsigned issue_flags)
@@ -210,6 +209,9 @@ static int io_uring_cmd_prep_setup(struct io_kiocb *req,
 	return 0;
 }
 
+/**
+ * Prepares a uring command by validating input and setting up the request.
+ */
 int io_uring_cmd_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_uring_cmd *ioucmd = io_kiocb_to_cmd(req, struct io_uring_cmd);
@@ -229,6 +231,9 @@ int io_uring_cmd_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return io_uring_cmd_prep_setup(req, sqe);
 }
 
+/**
+ * Executes a uring command by calling the file operation's uring_cmd handler.
+ */
 int io_uring_cmd(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_uring_cmd *ioucmd = io_kiocb_to_cmd(req, struct io_uring_cmd);
@@ -266,6 +271,9 @@ int io_uring_cmd(struct io_kiocb *req, unsigned int issue_flags)
 	return IOU_OK;
 }
 
+/**
+ * Imports a fixed buffer for a uring command.
+ */
 int io_uring_cmd_import_fixed(u64 ubuf, unsigned long len, int rw,
 			      struct iov_iter *iter,
 			      struct io_uring_cmd *ioucmd,
@@ -350,6 +358,9 @@ static inline int io_uring_cmd_setsockopt(struct socket *sock,
 				  optlen);
 }
 
+/**
+ * Handles socket-specific uring commands.
+ */
 #if defined(CONFIG_NET)
 int io_uring_cmd_sock(struct io_uring_cmd *cmd, unsigned int issue_flags)
 {

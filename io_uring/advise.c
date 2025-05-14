@@ -28,6 +28,10 @@ struct io_madvise {
 	u32				advice;
 };
 
+/**
+ * Prepares the madvise operation by extracting and validating parameters
+ * from the submission queue entry (SQE).
+ */
 int io_madvise_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 #if defined(CONFIG_ADVISE_SYSCALLS) && defined(CONFIG_MMU)
@@ -48,6 +52,9 @@ int io_madvise_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 #endif
 }
 
+/**
+ * Executes the madvise operation using the prepared parameters.
+ */
 int io_madvise(struct io_kiocb *req, unsigned int issue_flags)
 {
 #if defined(CONFIG_ADVISE_SYSCALLS) && defined(CONFIG_MMU)
@@ -64,6 +71,10 @@ int io_madvise(struct io_kiocb *req, unsigned int issue_flags)
 #endif
 }
 
+/**
+ * Determines if the fadvise operation should be forced to run asynchronously
+ * based on the advice type.
+ */
 static bool io_fadvise_force_async(struct io_fadvise *fa)
 {
 	switch (fa->advice) {
@@ -76,6 +87,10 @@ static bool io_fadvise_force_async(struct io_fadvise *fa)
 	}
 }
 
+/**
+ * Prepares the fadvise operation by extracting and validating parameters
+ * from the submission queue entry (SQE).
+ */
 int io_fadvise_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_fadvise *fa = io_kiocb_to_cmd(req, struct io_fadvise);
@@ -93,6 +108,9 @@ int io_fadvise_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/**
+ * Executes the fadvise operation using the prepared parameters.
+ */
 int io_fadvise(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_fadvise *fa = io_kiocb_to_cmd(req, struct io_fadvise);

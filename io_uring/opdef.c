@@ -39,12 +39,18 @@
 #include "truncate.h"
 #include "zcrx.h"
 
+/**
+ * Handles a no-issue operation, returning -ECANCELED.
+ */
 static int io_no_issue(struct io_kiocb *req, unsigned int issue_flags)
 {
 	WARN_ON_ONCE(1);
 	return -ECANCELED;
 }
 
+/**
+ * Prepares an unsupported operation, returning -EOPNOTSUPP.
+ */
 static __maybe_unused int io_eopnotsupp_prep(struct io_kiocb *kiocb,
 					     const struct io_uring_sqe *sqe)
 {
@@ -817,6 +823,9 @@ const struct io_cold_def io_cold_defs[] = {
 	},
 };
 
+/**
+ * Retrieves the name of an io_uring opcode.
+ */
 const char *io_uring_get_opcode(u8 opcode)
 {
 	if (opcode < IORING_OP_LAST)
@@ -824,6 +833,9 @@ const char *io_uring_get_opcode(u8 opcode)
 	return "INVALID";
 }
 
+/**
+ * Checks if an io_uring operation is supported.
+ */
 bool io_uring_op_supported(u8 opcode)
 {
 	if (opcode < IORING_OP_LAST &&
@@ -832,6 +844,9 @@ bool io_uring_op_supported(u8 opcode)
 	return false;
 }
 
+/**
+ * Initializes the io_uring operation table and validates its configuration.
+ */
 void __init io_uring_optable_init(void)
 {
 	int i;
