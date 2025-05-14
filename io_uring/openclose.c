@@ -36,6 +36,9 @@ struct io_fixed_install {
 	unsigned int			o_flags;
 };
 
+/**
+ * Determines if an openat operation should be forced to execute asynchronously.
+ */
 static bool io_openat_force_async(struct io_open *open)
 {
 	/*
@@ -47,6 +50,9 @@ static bool io_openat_force_async(struct io_open *open)
 	return open->how.flags & (O_TRUNC | O_CREAT | __O_TMPFILE);
 }
 
+/**
+ * Prepares an openat request from an io_uring submission queue entry (SQE).
+ */
 static int __io_openat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_open *open = io_kiocb_to_cmd(req, struct io_open);
@@ -82,6 +88,9 @@ static int __io_openat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe
 	return 0;
 }
 
+/**
+ * Prepares an openat request with basic flags from an io_uring submission queue entry (SQE).
+ */
 int io_openat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_open *open = io_kiocb_to_cmd(req, struct io_open);
@@ -92,6 +101,9 @@ int io_openat_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return __io_openat_prep(req, sqe);
 }
 
+/**
+ * Prepares an openat2 request with extended flags from an io_uring submission queue entry (SQE).
+ */
 int io_openat2_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_open *open = io_kiocb_to_cmd(req, struct io_open);
@@ -111,6 +123,9 @@ int io_openat2_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return __io_openat_prep(req, sqe);
 }
 
+/**
+ * Executes an openat2 operation, opening a file with the specified parameters.
+ */
 int io_openat2(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_open *open = io_kiocb_to_cmd(req, struct io_open);
@@ -172,11 +187,17 @@ err:
 	return IOU_OK;
 }
 
+/**
+ * Executes an openat operation, delegating to openat2.
+ */
 int io_openat(struct io_kiocb *req, unsigned int issue_flags)
 {
 	return io_openat2(req, issue_flags);
 }
 
+/**
+ * Cleans up resources associated with an open request.
+ */
 void io_open_cleanup(struct io_kiocb *req)
 {
 	struct io_open *open = io_kiocb_to_cmd(req, struct io_open);
@@ -185,6 +206,9 @@ void io_open_cleanup(struct io_kiocb *req)
 		putname(open->filename);
 }
 
+/**
+ * Closes a fixed file descriptor in the io_uring context.
+ */
 int __io_close_fixed(struct io_ring_ctx *ctx, unsigned int issue_flags,
 		     unsigned int offset)
 {
@@ -197,6 +221,9 @@ int __io_close_fixed(struct io_ring_ctx *ctx, unsigned int issue_flags,
 	return ret;
 }
 
+/**
+ * Closes a fixed file descriptor for a request.
+ */
 static inline int io_close_fixed(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_close *close = io_kiocb_to_cmd(req, struct io_close);
@@ -204,6 +231,9 @@ static inline int io_close_fixed(struct io_kiocb *req, unsigned int issue_flags)
 	return __io_close_fixed(req->ctx, issue_flags, close->file_slot - 1);
 }
 
+/**
+ * Prepares a close request from an io_uring submission queue entry (SQE).
+ */
 int io_close_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_close *close = io_kiocb_to_cmd(req, struct io_close);
@@ -221,6 +251,9 @@ int io_close_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 	return 0;
 }
 
+/**
+ * Executes a close operation, closing a file descriptor or fixed file.
+ */
 int io_close(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct files_struct *files = current->files;
@@ -260,6 +293,9 @@ err:
 	return IOU_OK;
 }
 
+/**
+ * Prepares a request to install a fixed file descriptor from an io_uring submission queue entry (SQE).
+ */
 int io_install_fixed_fd_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
 {
 	struct io_fixed_install *ifi;
@@ -290,6 +326,9 @@ int io_install_fixed_fd_prep(struct io_kiocb *req, const struct io_uring_sqe *sq
 	return 0;
 }
 
+/**
+ * Installs a fixed file descriptor for a request.
+ */
 int io_install_fixed_fd(struct io_kiocb *req, unsigned int issue_flags)
 {
 	struct io_fixed_install *ifi;

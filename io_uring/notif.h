@@ -23,15 +23,28 @@ struct io_notif_data {
 	bool			zc_copied;
 };
 
+/**
+ * Allocates a notification request for the io_uring context.
+ */
 struct io_kiocb *io_alloc_notif(struct io_ring_ctx *ctx);
+
+/**
+ * Completes a user buffer notification for a transmitted socket buffer.
+ */
 void io_tx_ubuf_complete(struct sk_buff *skb, struct ubuf_info *uarg,
 			 bool success);
 
+/**
+ * Converts an io_kiocb notification to its associated io_notif_data structure.
+ */
 static inline struct io_notif_data *io_notif_to_data(struct io_kiocb *notif)
 {
 	return io_kiocb_to_cmd(notif, struct io_notif_data);
 }
 
+/**
+ * Flushes a notification request, completing any pending user buffer notifications.
+ */
 static inline void io_notif_flush(struct io_kiocb *notif)
 	__must_hold(&notif->ctx->uring_lock)
 {
@@ -40,6 +53,9 @@ static inline void io_notif_flush(struct io_kiocb *notif)
 	io_tx_ubuf_complete(NULL, &nd->uarg, true);
 }
 
+/**
+ * Accounts for memory usage associated with a notification request.
+ */
 static inline int io_notif_account_mem(struct io_kiocb *notif, unsigned len)
 {
 	struct io_ring_ctx *ctx = notif->ctx;
